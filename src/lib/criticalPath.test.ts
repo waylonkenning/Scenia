@@ -200,10 +200,10 @@ describe('computeCriticalPath', () => {
   });
 
   // ── AC2: Invalid date handling ──────────────────────────────────────────────
-  it('AC2: initiative with invalid dates gets 0 duration and does not corrupt path calculation', () => {
+  it('AC2: initiatives with invalid dates are excluded from critical path graph', () => {
     // B is in the dependency chain (a→b→c) but has invalid dates.
     // Without the fix, NaN propagates into the duration map and corrupts comparisons.
-    // With the fix, B gets 0 duration via the ?? 0 fallback — path is still found correctly.
+    // With the fix, B is excluded from graph traversal and cannot be highlighted as critical.
     const initiatives = [
       createInitiative('a', '2026-01-01', '2026-03-31'), // 89 days
       { ...createInitiative('b', 'not-a-date', '2026-06-30'), startDate: '' }, // Invalid
@@ -219,12 +219,9 @@ describe('computeCriticalPath', () => {
 
     const [initIds, depIds] = computeCriticalPath(initiatives, dependencies);
 
-    // A→B→C is the only chain; all three should be on the critical path
-    expect(initIds.has('a')).toBe(true);
-    expect(initIds.has('b')).toBe(true);
-    expect(initIds.has('c')).toBe(true);
-    expect(depIds.has('d1')).toBe(true);
-    expect(depIds.has('d2')).toBe(true);
+    // Dependencies touching invalid initiative B are ignored
+    expect(initIds.size).toBe(0);
+    expect(depIds.size).toBe(0);
   });
 
   it('AC1+AC3: handles initiatives with invalid dates gracefully without throwing', () => {
@@ -240,10 +237,8 @@ describe('computeCriticalPath', () => {
     expect(() => computeCriticalPath(initiatives, dependencies)).not.toThrow();
 
     const [initIds, depIds] = computeCriticalPath(initiatives, dependencies);
-    // A has 0 duration (invalid dates) but is still on the path due to dependency
-    // B is on the path with valid duration
-    expect(initIds.size).toBe(2);
-    expect(initIds.has('a')).toBe(true);
-    expect(initIds.has('b')).toBe(true);
+    // A is excluded because its dates are invalid, so related dependency is ignored
+    expect(initIds.size).toBe(0);
+    expect(depIds.size).toBe(0);
   });
 });

@@ -18,6 +18,30 @@ interface AppData {
   dtsPhases?: DtsPhaseRecord[];
 }
 
+
+const ALLOWED_MONTHS_TO_SHOW: TimelineSettings['monthsToShow'][] = [3, 6, 12, 24, 36];
+
+const sanitizeTimelineSettings = (raw: unknown): TimelineSettings | undefined => {
+  if (!raw || typeof raw !== 'object') return undefined;
+
+  const candidate = raw as Partial<TimelineSettings>;
+  const startDate = typeof candidate.startDate === 'string' ? candidate.startDate.trim() : '';
+  const isIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(startDate) && !Number.isNaN(Date.parse(startDate));
+
+  const parsedMonths = Number((candidate as any).monthsToShow);
+  const monthsToShow = ALLOWED_MONTHS_TO_SHOW.includes(parsedMonths as TimelineSettings['monthsToShow'])
+    ? (parsedMonths as TimelineSettings['monthsToShow'])
+    : undefined;
+
+  if (!isIsoDate || !monthsToShow) return undefined;
+
+  return {
+    ...candidate,
+    startDate,
+    monthsToShow,
+  } as TimelineSettings;
+};
+
 const DTS_ADOPTION_STATUS_LABEL: Record<DtsAdoptionStatus, string> = {
   'not-started':    'Not Started',
   'scoping':        'Scoping',
@@ -25,6 +49,21 @@ const DTS_ADOPTION_STATUS_LABEL: Record<DtsAdoptionStatus, string> = {
   'adopted':        'Adopted',
   'decommissioning':'Decommissioning Incumbent',
   'not-applicable': 'Not Applicable',
+};
+
+const normalizeResourceIds = (value: unknown): string[] | undefined => {
+  if (typeof value === 'string') {
+    const parsed = value.split(',').map(s => s.trim()).filter(Boolean);
+    return parsed.length > 0 ? parsed : undefined;
+  }
+  if (Array.isArray(value)) {
+    const parsed = value
+      .filter((id): id is string => typeof id === 'string')
+      .map(id => id.trim())
+      .filter(Boolean);
+    return parsed.length > 0 ? parsed : undefined;
+  }
+  return undefined;
 };
 
 export const exportToExcel = (data: AppData) => {
@@ -223,9 +262,7 @@ export const importFromExcel = async (file: File): Promise<Partial<AppData>> => 
           ...init,
           capex: Number(init.capex) || Number((init as any).budget) || 0,
           opex: Number(init.opex) || 0,
-          resourceIds: typeof (init as any).resourceIds === 'string' 
-            ? (init as any).resourceIds.split(',').map((s: string) => s.trim()).filter(Boolean)
-            : init.resourceIds,
+          resourceIds: normalizeResourceIds((init as any).resourceIds),
         }));
 
         const assetsSplit = split<Asset>(raw.assets);
@@ -250,7 +287,13 @@ export const importFromExcel = async (file: File): Promise<Partial<AppData>> => 
         result.applications = appSplit.current;
 
         const segSplit = split<ApplicationSegment>(raw.applicationSegments);
-        result.applicationSegments = segSplit.current;
+        result.applicationSegments = segSplit.current.map(seg => ({
+          ...seg,
+          startDate: seg.startDate != null ? String(seg.startDate) : '',
+          endDate: seg.endDate != null ? String(seg.endDate) : '',
+          row: Number.isInteger(seg.row) && (seg.row as number) >= 0 ? seg.row : undefined,
+          rowSpan: Number.isInteger(seg.rowSpan) && (seg.rowSpan as number) > 0 ? seg.rowSpan : undefined,
+        }));
 
         const statSplit = split<ApplicationStatus>(raw.applicationStatuses);
         result.applicationStatuses = statSplit.current;
@@ -262,7 +305,7 @@ export const importFromExcel = async (file: File): Promise<Partial<AppData>> => 
         result.dtsPhases = dtsPhaseSplit.current;
 
         const settingsSplit = split<TimelineSettings>(raw.timelineSettings);
-        result.timelineSettings = settingsSplit.current[0];
+        result.timelineSettings = sanitizeTimelineSettings(settingsSplit.current[0]);
 
         // Reconstruct versions
         if (raw.versions.length > 0) {
@@ -278,9 +321,7 @@ export const importFromExcel = async (file: File): Promise<Partial<AppData>> => 
                   ...init,
                   capex: Number(init.capex) || Number((init as any).budget) || 0,
                   opex: Number(init.opex) || 0,
-                  resourceIds: typeof (init as any).resourceIds === 'string' 
-                    ? (init as any).resourceIds.split(',').map((s: string) => s.trim()).filter(Boolean)
-                    : init.resourceIds,
+                  resourceIds: normalizeResourceIds((init as any).resourceIds),
                 })),
                 assets: assetsSplit.byVersion[vid] || [],
                 assetCategories: catSplit.byVersion[vid] || [],
@@ -293,7 +334,7 @@ export const importFromExcel = async (file: File): Promise<Partial<AppData>> => 
                 applicationStatuses: statSplit.byVersion[vid] || [],
                 resources: resSplit.byVersion[vid] || [],
                 dtsPhases: dtsPhaseSplit.byVersion[vid] || [],
-                timelineSettings: settingsSplit.byVersion[vid]?.[0] || {},
+                timelineSettings: sanitizeTimelineSettings(settingsSplit.byVersion[vid]?.[0]) || {},
               }
             };
           });
@@ -309,4 +350,3 @@ export const importFromExcel = async (file: File): Promise<Partial<AppData>> => 
     reader.readAsArrayBuffer(file);
   });
 };
-

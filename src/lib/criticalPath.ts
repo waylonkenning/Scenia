@@ -37,22 +37,28 @@ export function computeCriticalPath(
     durationOf.set(init.id, days);
   }
 
-  // Build successor list: successors[id] = [{depId, targetId}]
+  // Build successor list only from valid initiatives: successors[id] = [{depId, targetId}]
   const successors = new Map<string, Array<{ depId: string; targetId: string }>>();
   // Build predecessor set to find roots (nodes with no incoming ordering edges)
   const hasIncoming = new Set<string>();
 
   for (const dep of ordering) {
+    if (!durationOf.has(dep.sourceId) || !durationOf.has(dep.targetId)) {
+      continue;
+    }
+
     if (!successors.has(dep.sourceId)) successors.set(dep.sourceId, []);
     successors.get(dep.sourceId)!.push({ depId: dep.id, targetId: dep.targetId });
     hasIncoming.add(dep.targetId);
   }
 
-  // All initiative IDs involved in ordering deps
+  // All valid initiative IDs involved in ordering deps
   const involved = new Set<string>();
-  for (const dep of ordering) {
-    involved.add(dep.sourceId);
-    involved.add(dep.targetId);
+  for (const [sourceId, edges] of successors) {
+    involved.add(sourceId);
+    for (const { targetId } of edges) {
+      involved.add(targetId);
+    }
   }
 
   // Roots: involved nodes with no incoming edges

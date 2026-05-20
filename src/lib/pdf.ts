@@ -1,6 +1,35 @@
 import { toJpeg, toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 
+const EXPORT_LIMITS = {
+  maxWidth: 16384,
+  maxHeight: 16384,
+  maxPixels: 50_000_000,
+};
+
+const assertSafeExportSize = (
+  width: number,
+  height: number,
+  pixelRatio: number,
+  exportType: 'PDF' | 'PNG'
+) => {
+  const safeWidth = Math.floor(width);
+  const safeHeight = Math.floor(height);
+  const effectivePixels = safeWidth * safeHeight * pixelRatio * pixelRatio;
+
+  if (
+    safeWidth <= 0 ||
+    safeHeight <= 0 ||
+    safeWidth > EXPORT_LIMITS.maxWidth ||
+    safeHeight > EXPORT_LIMITS.maxHeight ||
+    effectivePixels > EXPORT_LIMITS.maxPixels
+  ) {
+    throw new Error(
+      `${exportType} export is too large for safe image generation. Reduce timeline range or row count and try again.`
+    );
+  }
+};
+
 /**
  * Exports the timeline element as a PDF file download.
  *
@@ -45,17 +74,21 @@ export const exportToPDF = async (elementId: string, filename: string = 'roadmap
     contentDiv.appendChild(legendClone);
   }
 
+  const width = scrollableArea.scrollWidth;
+  const height = scrollableArea.scrollHeight;
+  assertSafeExportSize(width, height, 1.5, 'PDF');
+
   const dataUrl = await toJpeg(scrollableArea, {
     quality: 0.92,
     pixelRatio: 1.5,
     backgroundColor: '#ffffff',
-    width: scrollableArea.scrollWidth,
-    height: scrollableArea.scrollHeight,
+    width,
+    height,
     style: {
       transform: 'scale(1)',
       transformOrigin: 'top left',
-      width: scrollableArea.scrollWidth + 'px',
-      height: scrollableArea.scrollHeight + 'px',
+      width: width + 'px',
+      height: height + 'px',
       overflow: 'visible',
     },
   });
@@ -110,19 +143,23 @@ export const exportToPNG = async (elementId: string, filename: string = 'roadmap
 
   const scrollableArea = (element.querySelector('.overflow-auto') as HTMLElement) || element;
   const MAX_BYTES = 2 * 1024 * 1024;
+  const width = scrollableArea.scrollWidth;
+  const height = scrollableArea.scrollHeight;
 
   let dataUrl = '';
   for (let pixelRatio = 1.0; pixelRatio > 0; pixelRatio -= 0.25) {
+    assertSafeExportSize(width, height, pixelRatio, 'PNG');
+
     dataUrl = await toPng(scrollableArea, {
       backgroundColor: '#ffffff',
       pixelRatio,
-      width: scrollableArea.scrollWidth,
-      height: scrollableArea.scrollHeight,
+      width,
+      height,
       style: {
         transform: 'scale(1)',
         transformOrigin: 'top left',
-        width: scrollableArea.scrollWidth + 'px',
-        height: scrollableArea.scrollHeight + 'px',
+        width: width + 'px',
+        height: height + 'px',
         overflow: 'visible',
       },
     });
