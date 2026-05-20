@@ -975,10 +975,17 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
     const finalItems: any[] = [];
     const placedRects: any[] = [];
 
-    const hasIntraAssetDependencies = dependencies.some(dep =>
-      assetInitiatives.some(i => i.id === dep.sourceId) &&
-      assetInitiatives.some(i => i.id === dep.targetId)
-    );
+    const assetInitiativeIds = new Set(assetInitiatives.map(i => i.id));
+    const intraAssetDependencies = new Set<string>();
+    dependencies.forEach(dep => {
+      if (!assetInitiativeIds.has(dep.sourceId) || !assetInitiativeIds.has(dep.targetId)) return;
+      const pairKey = dep.sourceId < dep.targetId
+        ? `${dep.sourceId}|${dep.targetId}`
+        : `${dep.targetId}|${dep.sourceId}`;
+      intraAssetDependencies.add(pairKey);
+    });
+
+    const hasIntraAssetDependencies = intraAssetDependencies.size > 0;
     const dynamicGap = hasIntraAssetDependencies ? 32 : BAR_GAP;
 
     sorted.forEach(entity => {
@@ -1017,9 +1024,13 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
           const entityIds = isGroup ? groupIds : [init.id];
           const targetIds = rect.isGroup ? rect.groupIds : [rect.id];
           
-          const hasDep = dependencies.some(d => 
-            (entityIds.includes(d.sourceId) && targetIds.includes(d.targetId)) ||
-            (targetIds.includes(d.sourceId) && entityIds.includes(d.targetId))
+          const hasDep = entityIds.some(entityId =>
+            targetIds.some(targetId => {
+              const pairKey = entityId < targetId
+                ? `${entityId}|${targetId}`
+                : `${targetId}|${entityId}`;
+              return intraAssetDependencies.has(pairKey);
+            })
           );
 
           const xOverlap = hasDep || !(rect.end <= left || rect.start >= right);
