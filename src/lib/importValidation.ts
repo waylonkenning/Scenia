@@ -12,10 +12,6 @@ const REQUIRED_FIELDS: Record<string, string[]> = {
   milestones: ['id', 'assetId', 'date', 'name', 'type'],
   dependencies: ['id', 'sourceId', 'targetId', 'type'],
   assetCategories: ['id', 'name'],
-  applications: ['id', 'assetId', 'name'],
-  applicationSegments: ['id', 'applicationId', 'startDate', 'endDate', 'status'],
-  applicationStatuses: ['id', 'name', 'color'],
-  resources: ['id', 'name'],
 };
 
 export function validateImportSchema(data: Record<string, unknown[]>): SchemaIssue[] {

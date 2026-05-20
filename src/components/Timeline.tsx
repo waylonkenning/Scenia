@@ -137,10 +137,20 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
     | { type: 'remove-area'; areaAlias: string; areaName: string; assetCount: number };
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
-  // Separate GEANZ assets (have alias starting TAP.XX.XX) from user assets
+  const geanzAssetAliases = useMemo(() => new Set(
+    geanzAreas.flatMap(area => area.assets.map(asset => asset.alias))
+  ), []);
+  const isGeanzCatalogueEnabled = settings.showGeanzCatalogue !== false;
+
+  const isGeanzCatalogueAsset = (asset: Asset): boolean => {
+    if (!asset.alias) return false;
+    return isGeanzCatalogueEnabled && geanzAssetAliases.has(asset.alias) && asset.categoryId === GEANZ_CATEGORY_ID;
+  };
+
+  // Separate canonical GEANZ catalogue assets from user assets
   const geanzAssets = useMemo(
-    () => assets.filter(a => a.alias && /^TAP\.\d+\.\d+/.test(a.alias)),
-    [assets]
+    () => assets.filter(isGeanzCatalogueAsset),
+    [assets, geanzAssetAliases, isGeanzCatalogueEnabled]
   );
   const geanzAssetsByArea = useMemo(() => {
     const map: Record<string, Asset[]> = {};
@@ -256,12 +266,12 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
     });
   }, [initiatives, searchQuery, assets, programmes, strategies]);
 
-  // Group assets by category ID — GEANZ assets (alias TAP.XX.XX) are rendered separately
+  // Group assets by category ID — canonical GEANZ assets are rendered separately
   const assetsByCategory = useMemo<Record<string, Asset[]>>(() => {
     const grouped: Record<string, Asset[]> = {};
     assets.forEach(a => {
-      // GEANZ assets are rendered in the dedicated GEANZ section, not here
-      if (a.alias && /^TAP\.\d+\.\d+/.test(a.alias)) return;
+      // Canonical GEANZ assets are rendered in the dedicated GEANZ section, not here
+      if (isGeanzCatalogueAsset(a)) return;
 
       // Hide assets with no matching initiatives when searching
       if (searchQuery) {
@@ -274,7 +284,7 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
       grouped[catId].push(a);
     });
     return grouped;
-  }, [assets, searchQuery, filteredInitiatives]);
+  }, [assets, searchQuery, filteredInitiatives, isGeanzCatalogueEnabled]);
 
   const sortedCategoryIds = useMemo(() => {
     const categoryIds = Object.keys(assetsByCategory);
@@ -965,10 +975,17 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
     const finalItems: any[] = [];
     const placedRects: any[] = [];
 
-    const hasIntraAssetDependencies = dependencies.some(dep =>
-      assetInitiatives.some(i => i.id === dep.sourceId) &&
-      assetInitiatives.some(i => i.id === dep.targetId)
-    );
+    const assetInitiativeIds = new Set(assetInitiatives.map(i => i.id));
+    const intraAssetDependencies = new Set<string>();
+    dependencies.forEach(dep => {
+      if (!assetInitiativeIds.has(dep.sourceId) || !assetInitiativeIds.has(dep.targetId)) return;
+      const pairKey = dep.sourceId < dep.targetId
+        ? `${dep.sourceId}|${dep.targetId}`
+        : `${dep.targetId}|${dep.sourceId}`;
+      intraAssetDependencies.add(pairKey);
+    });
+
+    const hasIntraAssetDependencies = intraAssetDependencies.size > 0;
     const dynamicGap = hasIntraAssetDependencies ? 32 : BAR_GAP;
 
     sorted.forEach(entity => {
@@ -1007,9 +1024,13 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
           const entityIds = isGroup ? groupIds : [init.id];
           const targetIds = rect.isGroup ? rect.groupIds : [rect.id];
           
-          const hasDep = dependencies.some(d => 
-            (entityIds.includes(d.sourceId) && targetIds.includes(d.targetId)) ||
-            (targetIds.includes(d.sourceId) && entityIds.includes(d.targetId))
+          const hasDep = entityIds.some(entityId =>
+            targetIds.some(targetId => {
+              const pairKey = entityId < targetId
+                ? `${entityId}|${targetId}`
+                : `${targetId}|${entityId}`;
+              return intraAssetDependencies.has(pairKey);
+            })
           );
 
           const xOverlap = hasDep || !(rect.end <= left || rect.start >= right);
@@ -1292,7 +1313,7 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
   const isCurrentTimeVisible = currentPos >= 0 && currentPos <= 100;
   const groupBy = settings.groupBy || 'asset';
   const display = settings.display || 'both';
-  const hasDtsAssets = assets.some(a => a.alias?.startsWith('DTS.'));
+  const hasDtsAssets = assets.some(a => typeof a.alias === 'string' && a.alias.startsWith('DTS.'));
 
   const DTS_PHASE_GROUPS = dtsPhases.length > 0
     ? dtsPhases.map(p => ({ id: p.id, name: p.name }))
@@ -1921,7 +1942,7 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="5" r="1" /><circle cx="9" cy="12" r="1" /><circle cx="9" cy="19" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="19" r="1" /></svg>
                             </div>}
                             <div className="font-semibold text-slate-800 min-w-0 flex-1">{asset.name}</div>
-                            {settings.showDtsAdoptionStatus === 'on' && asset.alias?.startsWith('DTS.') && asset.dtsAdoptionStatus && (() => {
+                            {settings.showDtsAdoptionStatus === 'on' && typeof asset.alias === 'string' && asset.alias.startsWith('DTS.') && asset.dtsAdoptionStatus && (() => {
                               const statusColors: Record<string, string> = {
                                 'not-started': 'bg-slate-200 text-slate-600',
                                 'scoping': 'bg-yellow-100 text-yellow-700',
