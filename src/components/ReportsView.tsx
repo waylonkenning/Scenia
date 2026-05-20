@@ -140,7 +140,7 @@ export function ReportsView({ assets, initiatives, milestones, dependencies, cur
     setDiffResult(computeDiff(base, currentData));
   };
 
-  const hasDtsAssets = assets.some(a => a.alias?.startsWith('DTS.'));
+  const hasDtsAssets = assets.some(a => typeof a.alias === 'string' && a.alias.startsWith('DTS.'));
 
   const cards: { slug: ReportSlug; icon: React.ReactNode; title: string; description: string }[] = [
     {
@@ -525,7 +525,7 @@ export function ReportsView({ assets, initiatives, milestones, dependencies, cur
   // ── DTS Alignment Coverage ───────────────────────────────────────────────────
   if (selectedReport === 'dts-alignment') {
     const dtsCategories = assetCategories
-      .filter(c => c.id.startsWith('cat-dts-'))
+      .filter(c => typeof c.id === 'string' && c.id.startsWith('cat-dts-'))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
     return (
@@ -552,8 +552,8 @@ export function ReportsView({ assets, initiatives, milestones, dependencies, cur
           <div className="space-y-6">
             {dtsCategories.map(cat => {
               const layerAssets = assets
-                .filter(a => a.categoryId === cat.id && a.alias?.startsWith('DTS.'))
-                .sort((a, b) => (a.alias ?? '').localeCompare(b.alias ?? ''));
+                .filter(a => a.categoryId === cat.id && typeof a.alias === 'string' && a.alias.startsWith('DTS.'))
+                .sort((a, b) => String(a.alias ?? '').localeCompare(String(b.alias ?? '')));
               return (
                 <div key={cat.id} data-testid={`dts-alignment-layer-${cat.id}`}>
                   <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">{cat.name}</h2>
