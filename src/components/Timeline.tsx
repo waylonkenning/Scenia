@@ -137,10 +137,19 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
     | { type: 'remove-area'; areaAlias: string; areaName: string; assetCount: number };
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
-  // Separate GEANZ assets (have alias starting TAP.XX.XX) from user assets
+  const geanzAssetAliases = useMemo(() => new Set(
+    geanzAreas.flatMap(area => area.assets.map(asset => asset.alias))
+  ), []);
+
+  const isGeanzCatalogueAsset = (asset: Asset): boolean => {
+    if (!asset.alias) return false;
+    return geanzAssetAliases.has(asset.alias) && asset.categoryId === GEANZ_CATEGORY_ID;
+  };
+
+  // Separate canonical GEANZ catalogue assets from user assets
   const geanzAssets = useMemo(
-    () => assets.filter(a => a.alias && /^TAP\.\d+\.\d+/.test(a.alias)),
-    [assets]
+    () => assets.filter(isGeanzCatalogueAsset),
+    [assets, geanzAssetAliases]
   );
   const geanzAssetsByArea = useMemo(() => {
     const map: Record<string, Asset[]> = {};
@@ -256,12 +265,12 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
     });
   }, [initiatives, searchQuery, assets, programmes, strategies]);
 
-  // Group assets by category ID — GEANZ assets (alias TAP.XX.XX) are rendered separately
+  // Group assets by category ID — canonical GEANZ assets are rendered separately
   const assetsByCategory = useMemo<Record<string, Asset[]>>(() => {
     const grouped: Record<string, Asset[]> = {};
     assets.forEach(a => {
-      // GEANZ assets are rendered in the dedicated GEANZ section, not here
-      if (a.alias && /^TAP\.\d+\.\d+/.test(a.alias)) return;
+      // Canonical GEANZ assets are rendered in the dedicated GEANZ section, not here
+      if (isGeanzCatalogueAsset(a)) return;
 
       // Hide assets with no matching initiatives when searching
       if (searchQuery) {
