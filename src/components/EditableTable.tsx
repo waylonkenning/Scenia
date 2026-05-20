@@ -183,6 +183,7 @@ export function EditableTable<T extends { [key: string]: any }>({
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
+      const toSearchString = (value: unknown) => String(value ?? '').toLowerCase();
       filteredData = rows.filter(row => {
         return columns.some(col => {
           const val = row[col.key];
@@ -190,9 +191,9 @@ export function EditableTable<T extends { [key: string]: any }>({
 
           if (col.type === 'select' && col.options) {
             const opt = col.options.find(o => String(o.value) === String(val));
-            return opt?.label.toLowerCase().includes(q) || String(val).toLowerCase().includes(q);
+            return toSearchString(opt?.label).includes(q) || toSearchString(val).includes(q);
           }
-          return String(val).toLowerCase().includes(q);
+          return toSearchString(val).includes(q);
         });
       });
     }

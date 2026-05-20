@@ -236,21 +236,23 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
     return computeCriticalPath(initiatives, dependencies);
   }, [initiatives, dependencies, settings.criticalPath]);
 
+  const toSearchString = (value: unknown) => String(value ?? '').toLowerCase();
+
   const filteredInitiatives = useMemo(() => {
     if (!searchQuery) return initiatives;
     const query = searchQuery.toLowerCase();
     return initiatives.filter(init => {
-      const matchName = init.name.toLowerCase().includes(query);
-      const matchDesc = init.description?.toLowerCase().includes(query);
+      const matchName = toSearchString(init.name).includes(query);
+      const matchDesc = toSearchString(init.description).includes(query);
 
       const asset = assets.find(a => a.id === init.assetId);
-      const matchAsset = asset?.name.toLowerCase().includes(query);
+      const matchAsset = toSearchString(asset?.name).includes(query);
 
       const programme = programmes.find(p => p.id === init.programmeId);
-      const matchProg = programme?.name.toLowerCase().includes(query);
+      const matchProg = toSearchString(programme?.name).includes(query);
 
       const strategy = strategies.find(s => s.id === init.strategyId);
-      const matchStrat = strategy?.name.toLowerCase().includes(query);
+      const matchStrat = toSearchString(strategy?.name).includes(query);
 
       return matchName || matchDesc || matchAsset || matchProg || matchStrat;
     });
