@@ -138,7 +138,7 @@ export const exportToExcel = (data: AppData) => {
 
   // 15. DTS Summary — only for workspaces that have DTS assets (alias starts with "DTS.")
   // Note: DTS Summary is a presentation sheet for CURRENT data only
-  const dtsAssets = data.assets.filter(a => a.alias?.startsWith('DTS.'));
+  const dtsAssets = data.assets.filter(a => typeof a.alias === 'string' && a.alias.startsWith('DTS.'));
   if (dtsAssets.length > 0) {
     const activeInitiatives = data.initiatives.filter(i => !i.isPlaceholder);
     const dtsSummaryRows = dtsAssets
