@@ -43,6 +43,13 @@ function getTimelineBucket(initiative: Initiative): string {
 
 const TIMELINE_BUCKET_ORDER = ['Now', 'Starting soon', 'Upcoming', 'Completed'];
 
+
+function getSafeRecordValue<T extends string>(map: Record<string, T>, key: unknown): T | undefined {
+  if (typeof key !== 'string') return undefined;
+  return Object.hasOwn(map, key) ? map[key] : undefined;
+}
+
+
 function getQuarterBucket(initiative: Initiative): string {
   const d = new Date(initiative.startDate);
   const q = Math.ceil((d.getMonth() + 1) / 3);
@@ -79,7 +86,7 @@ function bucketInitiatives(
       const prog = programmes.find(p => p.id === init.programmeId);
       key = prog?.name ?? 'No programme';
     } else if (mode === 'dts-phase') {
-      key = (init.dtsPhase && dtsPhaseLabels[init.dtsPhase]) ?? 'No DTS Phase';
+      key = getSafeRecordValue(dtsPhaseLabels, init.dtsPhase) ?? 'No DTS Phase';
     } else {
       const strat = strategies.find(s => s.id === init.strategyId);
       key = strat?.name ?? 'No strategy';
@@ -162,8 +169,8 @@ const STATUS_LABELS: Record<string, string> = {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${STATUS_STYLES[status] ?? STATUS_STYLES.planned}`}>
-      {STATUS_LABELS[status] ?? status}
+    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${getSafeRecordValue(STATUS_STYLES, status) ?? STATUS_STYLES.planned}`}>
+      {getSafeRecordValue(STATUS_LABELS, status) ?? status}
     </span>
   );
 }
@@ -256,12 +263,12 @@ const InitiativeRow: React.FC<{
         {/* Programme name */}
         {prog && <div className="text-xs text-slate-400 mt-0.5">{prog.name}</div>}
         {/* DTS Phase label */}
-        {initiative.dtsPhase && dtsPhaseLabels[initiative.dtsPhase] && (
+        {initiative.dtsPhase && getSafeRecordValue(dtsPhaseLabels, initiative.dtsPhase) && (
           <div
             data-testid={`initiative-phase-label-${initiative.id}`}
             className="text-[10px] text-indigo-500 font-medium mt-0.5"
           >
-            {dtsPhaseLabels[initiative.dtsPhase]}
+            {getSafeRecordValue(dtsPhaseLabels, initiative.dtsPhase)}
           </div>
         )}
         {/* Description */}
@@ -423,9 +430,9 @@ const AssetCard: React.FC<{
         {settings.showDtsAdoptionStatus === 'on' && asset.dtsAdoptionStatus && (
           <span
             data-testid={`mobile-adoption-badge-${asset.id}`}
-            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${DTS_ADOPTION_STATUS_STYLE[asset.dtsAdoptionStatus]}`}
+            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${getSafeRecordValue(DTS_ADOPTION_STATUS_STYLE as Record<string, string>, asset.dtsAdoptionStatus) ?? ''}`}
           >
-            {DTS_ADOPTION_STATUS_LABEL[asset.dtsAdoptionStatus]}
+            {getSafeRecordValue(DTS_ADOPTION_STATUS_LABEL as Record<string, string>, asset.dtsAdoptionStatus) ?? asset.dtsAdoptionStatus}
           </span>
         )}
           {conflicts > 0 && (
