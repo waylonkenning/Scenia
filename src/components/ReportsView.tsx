@@ -24,6 +24,12 @@ interface ReportsViewProps {
 
 type ReportSlug = 'version-history' | 'budget' | 'initiatives-dependencies' | 'capacity' | 'maturity-heatmap' | 'dts-alignment';
 
+
+function startsWithPrefix(value: unknown, prefix: string): boolean {
+  return typeof value === 'string' && value.startsWith(prefix);
+}
+
+
 function BackButton({ onBack }: { onBack: () => void }) {
   return (
     <button
@@ -140,7 +146,7 @@ export function ReportsView({ assets, initiatives, milestones, dependencies, cur
     setDiffResult(computeDiff(base, currentData));
   };
 
-  const hasDtsAssets = assets.some(a => a.alias?.startsWith('DTS.'));
+  const hasDtsAssets = assets.some(a => startsWithPrefix(a.alias, 'DTS.'));
 
   const cards: { slug: ReportSlug; icon: React.ReactNode; title: string; description: string }[] = [
     {
@@ -525,7 +531,7 @@ export function ReportsView({ assets, initiatives, milestones, dependencies, cur
   // ── DTS Alignment Coverage ───────────────────────────────────────────────────
   if (selectedReport === 'dts-alignment') {
     const dtsCategories = assetCategories
-      .filter(c => c.id.startsWith('cat-dts-'))
+      .filter(c => startsWithPrefix(c.id, 'cat-dts-'))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
     return (
@@ -552,7 +558,7 @@ export function ReportsView({ assets, initiatives, milestones, dependencies, cur
           <div className="space-y-6">
             {dtsCategories.map(cat => {
               const layerAssets = assets
-                .filter(a => a.categoryId === cat.id && a.alias?.startsWith('DTS.'))
+                .filter(a => a.categoryId === cat.id && startsWithPrefix(a.alias, 'DTS.'))
                 .sort((a, b) => (a.alias ?? '').localeCompare(b.alias ?? ''));
               return (
                 <div key={cat.id} data-testid={`dts-alignment-layer-${cat.id}`}>

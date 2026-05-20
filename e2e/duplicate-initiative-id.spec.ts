@@ -1,11 +1,11 @@
 /**
  * User Story: Prevent Duplicate Initiative IDs When Creating New Initiatives
  *
- * Bug: double-clicking a swimlane to create initiatives always generated
- * `init-new-0`, causing duplicate IDs when more than one was created this way.
+ * Bug: double-clicking a swimlane to create initiatives used to generate
+ * counter-based IDs that could collide across remounts.
  *
- * Fix: the ID generator now walks the existing initiative list and increments
- * the counter until it finds an unused ID.
+ * Fix: the ID generator now uses collision-resistant UUIDs, so repeated
+ * double-clicks should create distinct initiative IDs every time.
  */
 
 import { test, expect } from '@playwright/test';
@@ -15,7 +15,7 @@ test.describe('Duplicate Initiative ID Prevention', () => {
     await page.goto('/');
     await page.waitForSelector('[data-testid="asset-row-content"]', { timeout: 20000 });
 
-    // Clear all initiatives so no stale init-new-N IDs from prior runs interfere
+    // Clear all initiatives so no stale IDs from prior runs interfere
     await page.click('button:has-text("Data")');
     await page.waitForSelector('[data-testid="data-manager"]');
     await page.getByTestId('data-manager').getByRole('button', { name: /Initiatives/ }).click();
@@ -52,7 +52,7 @@ test.describe('Duplicate Initiative ID Prevention', () => {
     }
 
     // All three created initiative bars should have distinct IDs
-    const bars = page.locator('[data-initiative-id^="init-new-"]');
+    const bars = page.locator('[data-initiative-id]');
     await expect(bars).toHaveCount(3);
 
     const ids = await bars.evaluateAll(els => els.map(el => el.getAttribute('data-initiative-id')));

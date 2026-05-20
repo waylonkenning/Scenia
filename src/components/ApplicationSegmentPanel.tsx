@@ -18,6 +18,7 @@ interface ApplicationSegmentPanelProps {
   application: Application | null;
   applications?: Application[];
   isOpen: boolean;
+  isNew?: boolean;
   onClose: () => void;
   onSave: (segment: ApplicationSegment) => void;
   onDelete?: (segment: ApplicationSegment) => void;
@@ -29,6 +30,7 @@ export function ApplicationSegmentPanel({
   application,
   applications = [],
   isOpen,
+  isNew = false,
   onClose,
   onSave,
   onDelete,
@@ -49,8 +51,6 @@ export function ApplicationSegmentPanel({
   /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!isOpen || !formData) return null;
-
-  const isNew = formData.id.includes('new');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

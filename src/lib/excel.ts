@@ -66,6 +66,20 @@ const normalizeResourceIds = (value: unknown): string[] | undefined => {
   return undefined;
 };
 
+const normalizeInitiativeStatus = (value: unknown): Initiative['status'] => {
+  return value === 'planned' || value === 'active' || value === 'done' || value === 'cancelled'
+    ? value
+    : 'planned';
+};
+
+const normalizeImportedInitiative = (init: any): Initiative => ({
+  ...init,
+  capex: Number(init.capex) || Number(init.budget) || 0,
+  opex: Number(init.opex) || 0,
+  status: normalizeInitiativeStatus(init.status),
+  resourceIds: normalizeResourceIds(init.resourceIds) ?? init.resourceIds,
+});
+
 export const exportToExcel = (data: AppData) => {
   const wb = XLSX.utils.book_new();
 
@@ -153,7 +167,7 @@ export const exportToExcel = (data: AppData) => {
 
   // 15. DTS Summary — only for workspaces that have DTS assets (alias starts with "DTS.")
   // Note: DTS Summary is a presentation sheet for CURRENT data only
-  const dtsAssets = data.assets.filter(a => a.alias?.startsWith('DTS.'));
+  const dtsAssets = data.assets.filter(a => typeof a.alias === 'string' && a.alias.startsWith('DTS.'));
   if (dtsAssets.length > 0) {
     const activeInitiatives = data.initiatives.filter(i => !i.isPlaceholder);
     const dtsSummaryRows = dtsAssets
@@ -258,12 +272,7 @@ export const importFromExcel = async (file: File): Promise<Partial<AppData>> => 
         };
 
         const initsSplit = split<Initiative>(raw.initiatives);
-        result.initiatives = initsSplit.current.map(init => ({
-          ...init,
-          capex: Number(init.capex) || Number((init as any).budget) || 0,
-          opex: Number(init.opex) || 0,
-          resourceIds: normalizeResourceIds((init as any).resourceIds),
-        }));
+        result.initiatives = initsSplit.current.map(normalizeImportedInitiative);
 
         const assetsSplit = split<Asset>(raw.assets);
         result.assets = assetsSplit.current;
@@ -287,13 +296,7 @@ export const importFromExcel = async (file: File): Promise<Partial<AppData>> => 
         result.applications = appSplit.current;
 
         const segSplit = split<ApplicationSegment>(raw.applicationSegments);
-        result.applicationSegments = segSplit.current.map(seg => ({
-          ...seg,
-          startDate: seg.startDate != null ? String(seg.startDate) : '',
-          endDate: seg.endDate != null ? String(seg.endDate) : '',
-          row: Number.isInteger(seg.row) && (seg.row as number) >= 0 ? seg.row : undefined,
-          rowSpan: Number.isInteger(seg.rowSpan) && (seg.rowSpan as number) > 0 ? seg.rowSpan : undefined,
-        }));
+        result.applicationSegments = segSplit.current;
 
         const statSplit = split<ApplicationStatus>(raw.applicationStatuses);
         result.applicationStatuses = statSplit.current;
@@ -317,12 +320,7 @@ export const importFromExcel = async (file: File): Promise<Partial<AppData>> => 
               timestamp: v.timestamp,
               description: v.description,
               data: {
-                initiatives: (initsSplit.byVersion[vid] || []).map(init => ({
-                  ...init,
-                  capex: Number(init.capex) || Number((init as any).budget) || 0,
-                  opex: Number(init.opex) || 0,
-                  resourceIds: normalizeResourceIds((init as any).resourceIds),
-                })),
+                initiatives: (initsSplit.byVersion[vid] || []).map(normalizeImportedInitiative),
                 assets: assetsSplit.byVersion[vid] || [],
                 assetCategories: catSplit.byVersion[vid] || [],
                 programmes: progSplit.byVersion[vid] || [],
@@ -350,3 +348,4 @@ export const importFromExcel = async (file: File): Promise<Partial<AppData>> => 
     reader.readAsArrayBuffer(file);
   });
 };
+

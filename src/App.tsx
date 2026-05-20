@@ -128,7 +128,7 @@ export default function App() {
   const [redoStack, setRedoStack] = useState<AppState[]>([]);
   const [dbSaveError, setDbSaveError] = useState<string | null>(null);
 
-  const hasDtsAssets = assets.some(a => a.alias?.startsWith('DTS.'));
+  const hasDtsAssets = assets.some(a => typeof a.alias === 'string' && a.alias.startsWith('DTS.'));
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isVersionManagerOpen, setIsVersionManagerOpen] = useState(false);
