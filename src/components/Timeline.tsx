@@ -57,6 +57,7 @@ interface TimelineProps {
 
 const SIDEBAR_WIDTH_DESKTOP = 256; // 16rem
 const SIDEBAR_WIDTH_MOBILE = 120; // 7.5rem
+const MAX_RENDERED_DEPENDENCIES = 2000;
 
 
 export function Timeline({ assets, applications = [], initiatives, milestones, programmes, strategies, dependencies, assetCategories, resources = [], settings, onAddInitiative, onUpdateInitiative, onUpdateAssets, onUpdateDependencies, onUpdateMilestone, onDeleteInitiative, onUpdateSettings, searchQuery, applicationSegments: applicationSegmentsProp = [], onSaveApplicationSegment, onDeleteApplicationSegment, onUpdateApplicationSegments, applicationStatuses = [], dtsPhases = [], onDeleteAsset, onBulkDeleteAssets, onAddAssets }: TimelineProps) {
@@ -252,6 +253,21 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
     if ((settings.criticalPath || 'off') !== 'on') return [new Set<string>(), new Set<string>()];
     return computeCriticalPath(initiatives, dependencies);
   }, [initiatives, dependencies, settings.criticalPath]);
+
+  const renderedDependencies = useMemo(() => {
+    const uniqueDeps: Dependency[] = [];
+    const seen = new Set<string>();
+
+    for (const dep of dependencies) {
+      const key = `${dep.sourceType || 'initiative'}:${dep.sourceId}->${dep.targetType || 'initiative'}:${dep.targetId}:${dep.type || ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      uniqueDeps.push(dep);
+      if (uniqueDeps.length >= MAX_RENDERED_DEPENDENCIES) break;
+    }
+
+    return uniqueDeps;
+  }, [dependencies]);
 
   const filteredInitiatives = useMemo(() => {
     if (!searchQuery) return initiatives;
@@ -1437,7 +1453,7 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
                   });
                 }
 
-                return dependencies.map(dep => {
+                return renderedDependencies.map(dep => {
                 const isMilestoneSource = dep.sourceType === 'milestone';
                 const source = getEntityPos(dep.sourceId, dep.sourceType);
                 const target = getEntityPos(dep.targetId, dep.targetType);
