@@ -464,8 +464,9 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
     const calculatedEndDate = format(addDays(startDate, daysFromStart + 90), 'yyyy-MM-dd'); // 90 days default duration
 
     // Generate unique ID by checking existing initiatives
+    const existingInitiativeIds = new Set(initiatives.map(init => init.id));
     let newId = `init-new-${initIdCounter.current}`;
-    while (initiatives.some(init => init.id === newId)) {
+    while (existingInitiativeIds.has(newId)) {
       initIdCounter.current++;
       newId = `init-new-${initIdCounter.current}`;
     }
@@ -1303,6 +1304,15 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
         { id: 'not-dts', name: 'Not DTS' },
       ];
 
+  const groupedReferenceIds = new Set((groupBy === 'programme' ? programmes : strategies).map(group => group.id));
+  const orphanedSwimlaneInitiatives = (groupBy === 'programme' || groupBy === 'strategy')
+    ? localInitiatives.filter(i => {
+        if (i.isPlaceholder) return false;
+        const groupId = groupBy === 'programme' ? i.programmeId : i.strategyId;
+        return !groupId || !groupedReferenceIds.has(groupId);
+      })
+    : [];
+
   if (timeColumns.length === 0) return null;
 
   return (
@@ -1696,6 +1706,65 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
                 </div>
               );
             })}
+
+            {(groupBy === 'programme' || groupBy === 'strategy') && orphanedSwimlaneInitiatives.length > 0 && (() => {
+              const { items: swimlaneItems, height: swimlaneHeight } = layoutAsset(orphanedSwimlaneInitiatives);
+              return (
+                <div data-testid={`swimlane-row-${groupBy}-unassigned`}>
+                  <div className="flex z-30 bg-amber-50 border-y border-amber-200 w-max">
+                    <div className="sticky left-0 flex-shrink-0 px-4 py-1.5 text-xs font-bold text-amber-700 uppercase tracking-wider bg-amber-50 z-40 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.1)]" style={{ width: SIDEBAR_WIDTH }}>
+                      Unassigned {groupBy === 'programme' ? 'Programme' : 'Strategy'}
+                      <span className="ml-2 text-[10px] font-medium tracking-normal normal-case text-amber-600">({orphanedSwimlaneInitiatives.length})</span>
+                    </div>
+                    <div className="flex-shrink-0" style={{ width: totalWidth }} />
+                  </div>
+                  <div className="flex border-b border-amber-200 hover:bg-amber-50/50 transition-colors">
+                    <div className="sticky left-0 flex-shrink-0 bg-white border-r border-slate-200 px-3 flex items-center z-20 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.06)]" style={{ width: SIDEBAR_WIDTH, height: swimlaneHeight }}>
+                      <span className="text-xs text-amber-600 truncate">{orphanedSwimlaneInitiatives.length} initiative{orphanedSwimlaneInitiatives.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="relative bg-white" style={{ width: totalWidth, height: swimlaneHeight }}>
+                      {isCurrentTimeVisible && (
+                        <div className="absolute top-0 bottom-0 w-0.5 bg-emerald-400/80 z-10 pointer-events-none" style={{ left: `${currentPos}%` }} />
+                      )}
+                      {swimlaneItems.map(({ init, top, height: barH, left, width: barW }: any) => {
+                        if (left + barW < 0 || left > 100) return null;
+                        const prog = programmeMap.get(init.programmeId);
+                        const strat = strategyMap.get(init.strategyId);
+                        const colorClass = getInitiativeColor(init, prog, strat);
+                        const subtitle = getInitiativeSubtitle(init, prog, strat);
+                        const isOnCriticalPath = criticalPathInitIds.has(init.id);
+                        return (
+                          <InitiativeBar
+                            key={init.id}
+                            init={init}
+                            left={left}
+                            width={barW}
+                            height={barH}
+                            top={top}
+                            colorClass={colorClass}
+                            subtitle={subtitle}
+                            isOnCriticalPath={isOnCriticalPath}
+                            isSelected={selectedInitiativeId === init.id}
+                            resources={resources}
+                            settings={settings}
+                            progName={prog?.name}
+                            stratName={strat?.name}
+                            isDraggingRef={isDraggingRef}
+                            onSelect={() => setSelectedInitiativeId(init.id)}
+                            onOpenPanel={() => setInitiativePanelId(init.id)}
+                            onMoveStart={(e) => {
+                              isDraggingRef.current = false;
+                              setMoving({ id: init.id, initialX: e.clientX, initialY: e.clientY, initialStart: init.startDate, initialEnd: init.endDate });
+                            }}
+                            onResizeStart={(e, edge) => handleResizeStart(e, init.id, edge, edge === 'start' ? init.startDate : init.endDate)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Swimlane view: group by DTS Phase */}
             {groupBy === 'dts-phase' && DTS_PHASE_GROUPS.map(group => {

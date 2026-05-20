@@ -53,6 +53,10 @@ function getYearBucket(initiative: Initiative): string {
   return String(new Date(initiative.startDate).getFullYear());
 }
 
+function getSafeLabel(map: Record<string, string>, key: string | undefined): string | undefined {
+  return key && Object.hasOwn(map, key) ? map[key] : undefined;
+}
+
 function bucketInitiatives(
   initiatives: Initiative[],
   mode: BucketMode,
@@ -79,7 +83,7 @@ function bucketInitiatives(
       const prog = programmes.find(p => p.id === init.programmeId);
       key = prog?.name ?? 'No programme';
     } else if (mode === 'dts-phase') {
-      key = (init.dtsPhase && dtsPhaseLabels[init.dtsPhase]) ?? 'No DTS Phase';
+      key = getSafeLabel(dtsPhaseLabels, init.dtsPhase) ?? 'No DTS Phase';
     } else {
       const strat = strategies.find(s => s.id === init.strategyId);
       key = strat?.name ?? 'No strategy';
@@ -256,12 +260,12 @@ const InitiativeRow: React.FC<{
         {/* Programme name */}
         {prog && <div className="text-xs text-slate-400 mt-0.5">{prog.name}</div>}
         {/* DTS Phase label */}
-        {initiative.dtsPhase && dtsPhaseLabels[initiative.dtsPhase] && (
+        {getSafeLabel(dtsPhaseLabels, initiative.dtsPhase) && (
           <div
             data-testid={`initiative-phase-label-${initiative.id}`}
             className="text-[10px] text-indigo-500 font-medium mt-0.5"
           >
-            {dtsPhaseLabels[initiative.dtsPhase]}
+            {getSafeLabel(dtsPhaseLabels, initiative.dtsPhase)}
           </div>
         )}
         {/* Description */}
@@ -420,12 +424,12 @@ const AssetCard: React.FC<{
         }
         <span className="flex-1 text-sm font-semibold text-slate-800 truncate">{asset.name}</span>
         <div className="flex items-center gap-2 flex-shrink-0">
-        {settings.showDtsAdoptionStatus === 'on' && asset.dtsAdoptionStatus && (
+        {settings.showDtsAdoptionStatus === 'on' && getSafeLabel(DTS_ADOPTION_STATUS_LABEL, asset.dtsAdoptionStatus) && (
           <span
             data-testid={`mobile-adoption-badge-${asset.id}`}
-            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${DTS_ADOPTION_STATUS_STYLE[asset.dtsAdoptionStatus]}`}
+            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${getSafeLabel(DTS_ADOPTION_STATUS_STYLE, asset.dtsAdoptionStatus)}`}
           >
-            {DTS_ADOPTION_STATUS_LABEL[asset.dtsAdoptionStatus]}
+            {getSafeLabel(DTS_ADOPTION_STATUS_LABEL, asset.dtsAdoptionStatus)}
           </span>
         )}
           {conflicts > 0 && (

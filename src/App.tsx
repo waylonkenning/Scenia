@@ -57,6 +57,7 @@ type AppState = {
 import { cn } from './lib/utils';
 import { getAppData, saveAppData, getAllVersions } from './lib/db';
 import { importFromExcel } from './lib/excel';
+import { validateImportSchema } from './lib/importValidation';
 import { importSharedWorkspace } from './lib/share';
 import { useRef } from 'react';
 
@@ -334,6 +335,21 @@ export default function App() {
   const handleViewerImport = useCallback(async (file: File) => {
     try {
       const imported = await importFromExcel(file);
+      const hasData = Object.values(imported).some(arr => Array.isArray(arr) && arr.length > 0);
+      if (!hasData) {
+        setDbSaveError('No valid data found in the Excel file.');
+        return;
+      }
+
+      const schemaIssues = validateImportSchema(imported as Record<string, unknown[]>);
+      const errorIssues = schemaIssues.filter(issue => issue.severity === 'error');
+      if (errorIssues.length > 0) {
+        const preview = errorIssues.slice(0, 3).map(issue => `${issue.entity}: ${issue.issue}`).join('; ');
+        const moreText = errorIssues.length > 3 ? ` (and ${errorIssues.length - 3} more)` : '';
+        setDbSaveError(`Viewer import failed validation: ${preview}${moreText}`);
+        return;
+      }
+
       const blank = getTemplateData('viewer', false);
       const data: AppState = {
         assetCategories: imported.assetCategories ?? blank.assetCategories,
