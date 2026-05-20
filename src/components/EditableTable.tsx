@@ -66,7 +66,6 @@ export function EditableTable<T extends { [key: string]: any }>({
   const [resizing, setResizing] = useState<{ key: string; startX: number; startWidth: number } | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const scrollWrapperRef = useRef<HTMLDivElement>(null);
-  const rowIdCounter = useRef(0);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -183,6 +182,7 @@ export function EditableTable<T extends { [key: string]: any }>({
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
+      const toSearchString = (value: unknown) => String(value ?? '').toLowerCase();
       filteredData = rows.filter(row => {
         return columns.some(col => {
           const val = row[col.key];
@@ -190,9 +190,9 @@ export function EditableTable<T extends { [key: string]: any }>({
 
           if (col.type === 'select' && col.options) {
             const opt = col.options.find(o => String(o.value) === String(val));
-            return opt?.label.toLowerCase().includes(q) || String(val).toLowerCase().includes(q);
+            return toSearchString(opt?.label).includes(q) || toSearchString(val).includes(q);
           }
-          return String(val).toLowerCase().includes(q);
+          return toSearchString(val).includes(q);
         });
       });
     }
@@ -372,7 +372,9 @@ export function EditableTable<T extends { [key: string]: any }>({
             const value: string | number | boolean =
               col?.type === 'number' ? (parseFloat(raw) || 0) :
               col?.type === 'boolean' ? (raw.toLowerCase() === 'true' || raw === '1') :
-              raw;
+              col?.type === 'select'
+                ? (col.options?.some(option => option.value === raw) ? raw : (col.options?.[0]?.value ?? ''))
+                : raw;
             rowData[key] = value as T[keyof T];
           }
         });

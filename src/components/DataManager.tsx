@@ -151,7 +151,7 @@ export function DataManager({ data, onUpdate, onOpenTemplatePicker, searchQuery 
   const initiativeOptions = data.initiatives.map(i => ({ value: i.id, label: i.name }));
   const categoryOptions = data.assetCategories.map(c => ({ value: c.id, label: c.name }));
 
-  const hasDtsAssets = data.assets.some(a => a.alias?.startsWith('DTS.'));
+  const hasDtsAssets = data.assets.some(a => typeof a.alias === 'string' && a.alias.startsWith('DTS.'));
 
   const DTS_PHASE_OPTIONS = [
     { value: '', label: '— Not Set —' },

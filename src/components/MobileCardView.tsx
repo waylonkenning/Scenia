@@ -43,6 +43,13 @@ function getTimelineBucket(initiative: Initiative): string {
 
 const TIMELINE_BUCKET_ORDER = ['Now', 'Starting soon', 'Upcoming', 'Completed'];
 
+
+function getSafeRecordValue<T extends string>(map: Record<string, T>, key: unknown): T | undefined {
+  if (typeof key !== 'string') return undefined;
+  return Object.hasOwn(map, key) ? map[key] : undefined;
+}
+
+
 function getQuarterBucket(initiative: Initiative): string {
   const d = new Date(initiative.startDate);
   const q = Math.ceil((d.getMonth() + 1) / 3);
@@ -51,10 +58,6 @@ function getQuarterBucket(initiative: Initiative): string {
 
 function getYearBucket(initiative: Initiative): string {
   return String(new Date(initiative.startDate).getFullYear());
-}
-
-function getSafeLabel(map: Record<string, string>, key: string | undefined): string | undefined {
-  return key && Object.hasOwn(map, key) ? map[key] : undefined;
 }
 
 function bucketInitiatives(
@@ -83,7 +86,7 @@ function bucketInitiatives(
       const prog = programmes.find(p => p.id === init.programmeId);
       key = prog?.name ?? 'No programme';
     } else if (mode === 'dts-phase') {
-      key = getSafeLabel(dtsPhaseLabels, init.dtsPhase) ?? 'No DTS Phase';
+      key = getSafeRecordValue(dtsPhaseLabels, init.dtsPhase) ?? 'No DTS Phase';
     } else {
       const strat = strategies.find(s => s.id === init.strategyId);
       key = strat?.name ?? 'No strategy';
@@ -93,7 +96,11 @@ function bucketInitiatives(
 
   // Sort initiatives within each bucket by start date
   for (const [, inits] of map) {
-    inits.sort((a, b) => a.startDate.localeCompare(b.startDate));
+    inits.sort((a, b) => {
+      const aStartDate = typeof a.startDate === 'string' ? a.startDate : '';
+      const bStartDate = typeof b.startDate === 'string' ? b.startDate : '';
+      return aStartDate.localeCompare(bStartDate);
+    });
   }
 
   // Return buckets in a meaningful order
@@ -166,8 +173,8 @@ const STATUS_LABELS: Record<string, string> = {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${STATUS_STYLES[status] ?? STATUS_STYLES.planned}`}>
-      {STATUS_LABELS[status] ?? status}
+    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${getSafeRecordValue(STATUS_STYLES, status) ?? STATUS_STYLES.planned}`}>
+      {getSafeRecordValue(STATUS_LABELS, status) ?? status}
     </span>
   );
 }
@@ -260,12 +267,12 @@ const InitiativeRow: React.FC<{
         {/* Programme name */}
         {prog && <div className="text-xs text-slate-400 mt-0.5">{prog.name}</div>}
         {/* DTS Phase label */}
-        {getSafeLabel(dtsPhaseLabels, initiative.dtsPhase) && (
+        {initiative.dtsPhase && getSafeRecordValue(dtsPhaseLabels, initiative.dtsPhase) && (
           <div
             data-testid={`initiative-phase-label-${initiative.id}`}
             className="text-[10px] text-indigo-500 font-medium mt-0.5"
           >
-            {getSafeLabel(dtsPhaseLabels, initiative.dtsPhase)}
+            {getSafeRecordValue(dtsPhaseLabels, initiative.dtsPhase)}
           </div>
         )}
         {/* Description */}
@@ -424,12 +431,12 @@ const AssetCard: React.FC<{
         }
         <span className="flex-1 text-sm font-semibold text-slate-800 truncate">{asset.name}</span>
         <div className="flex items-center gap-2 flex-shrink-0">
-        {settings.showDtsAdoptionStatus === 'on' && getSafeLabel(DTS_ADOPTION_STATUS_LABEL, asset.dtsAdoptionStatus) && (
+        {settings.showDtsAdoptionStatus === 'on' && asset.dtsAdoptionStatus && (
           <span
             data-testid={`mobile-adoption-badge-${asset.id}`}
-            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${getSafeLabel(DTS_ADOPTION_STATUS_STYLE, asset.dtsAdoptionStatus)}`}
+            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${getSafeRecordValue(DTS_ADOPTION_STATUS_STYLE as Record<string, string>, asset.dtsAdoptionStatus) ?? ''}`}
           >
-            {getSafeLabel(DTS_ADOPTION_STATUS_LABEL, asset.dtsAdoptionStatus)}
+            {getSafeRecordValue(DTS_ADOPTION_STATUS_LABEL as Record<string, string>, asset.dtsAdoptionStatus) ?? asset.dtsAdoptionStatus}
           </span>
         )}
           {conflicts > 0 && (
