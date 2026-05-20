@@ -74,9 +74,15 @@ export function InitiativeBar({
   const opex = init.opex || 0;
   const hasBudget = (capex + opex) > 0;
 
+  const maxDescriptionChars = 600;
+  const hasDescription = typeof init.description === 'string' && init.description.length > 0;
+  const safeDescription = hasDescription
+    ? init.description.slice(0, maxDescriptionChars) + (init.description.length > maxDescriptionChars ? '…' : '')
+    : '';
+
   const hoverTitle = isGroup
-    ? `Group: ${init.name}\n${init.description ?? ''}`
-    : `${init.isPlaceholder ? '[Placeholder] ' : ''}${init.name}\nProgramme: ${progName ?? ''}\nStrategy: ${stratName ?? ''}\nCapEx: $${capex.toLocaleString()}\nOpEx: $${opex.toLocaleString()}${init.description ? `\n${init.description}` : ''}`;
+    ? `Group: ${init.name}\n${safeDescription}`
+    : `${init.isPlaceholder ? '[Placeholder] ' : ''}${init.name}\nProgramme: ${progName ?? ''}\nStrategy: ${stratName ?? ''}\nCapEx: $${capex.toLocaleString()}\nOpEx: $${opex.toLocaleString()}${safeDescription ? `\n${safeDescription}` : ''}`;
 
   return (
     <div
@@ -242,7 +248,7 @@ export function InitiativeBar({
                 !init.isPlaceholder && 'drop-shadow-md',
               )}
             >
-              {init.description}
+              {safeDescription}
             </div>
           ) : null
         )}

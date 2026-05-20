@@ -988,8 +988,9 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
         const subtitle = isGroup ? (groupProgrammeNames || groupStrategyNames) : (init.programmeId || init.strategyId);
         const baseHeight = subtitle ? 48 : 32;
         const charsPerLine = Math.max(20, Math.floor(width * 4));
-        const lines = Math.ceil(init.description.length / charsPerLine);
-        const clampedLines = isGroup ? lines : Math.min(3, lines);
+        const descriptionLength = Math.min(init.description.length, 600);
+        const lines = Math.ceil(descriptionLength / charsPerLine);
+        const clampedLines = Math.min(6, lines);
         descHeight = Math.max(BAR_HEIGHT, baseHeight + clampedLines * 12 + 9);
       }
 
