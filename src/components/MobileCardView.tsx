@@ -93,7 +93,11 @@ function bucketInitiatives(
 
   // Sort initiatives within each bucket by start date
   for (const [, inits] of map) {
-    inits.sort((a, b) => a.startDate.localeCompare(b.startDate));
+    inits.sort((a, b) => {
+      const aStartDate = typeof a.startDate === 'string' ? a.startDate : '';
+      const bStartDate = typeof b.startDate === 'string' ? b.startDate : '';
+      return aStartDate.localeCompare(bStartDate);
+    });
   }
 
   // Return buckets in a meaningful order
