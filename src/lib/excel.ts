@@ -140,21 +140,31 @@ export const exportToExcel = (data: AppData) => {
   // Note: DTS Summary is a presentation sheet for CURRENT data only
   const dtsAssets = data.assets.filter(a => a.alias?.startsWith('DTS.'));
   if (dtsAssets.length > 0) {
-    const activeInitiatives = data.initiatives.filter(i => !i.isPlaceholder);
+    const categoriesById = new Map(data.assetCategories.map(category => [category.id, category]));
+    const initiativesByAssetId = new Map<string, { count: number; totalCapex: number; totalOpex: number }>();
+
+    data.initiatives.forEach(initiative => {
+      if (initiative.isPlaceholder || !initiative.assetId) return;
+
+      const existing = initiativesByAssetId.get(initiative.assetId) ?? { count: 0, totalCapex: 0, totalOpex: 0 };
+      existing.count += 1;
+      existing.totalCapex += initiative.capex || 0;
+      existing.totalOpex += initiative.opex || 0;
+      initiativesByAssetId.set(initiative.assetId, existing);
+    });
+
     const dtsSummaryRows = dtsAssets
       .sort((a, b) => {
-        const catA = data.assetCategories.find(c => c.id === a.categoryId);
-        const catB = data.assetCategories.find(c => c.id === b.categoryId);
+        const catA = categoriesById.get(a.categoryId);
+        const catB = categoriesById.get(b.categoryId);
         const orderA = catA?.order ?? 999;
         const orderB = catB?.order ?? 999;
         if (orderA !== orderB) return orderA - orderB;
         return (a.alias ?? '').localeCompare(b.alias ?? '');
       })
       .map(asset => {
-        const category = data.assetCategories.find(c => c.id === asset.categoryId);
-        const assetInits = activeInitiatives.filter(i => i.assetId === asset.id);
-        const totalCapex = assetInits.reduce((sum, i) => sum + (i.capex || 0), 0);
-        const totalOpex = assetInits.reduce((sum, i) => sum + (i.opex || 0), 0);
+        const category = categoriesById.get(asset.categoryId);
+        const summary = initiativesByAssetId.get(asset.id) ?? { count: 0, totalCapex: 0, totalOpex: 0 };
         return {
           'Layer': category?.name ?? '',
           'Asset Name': asset.name,
@@ -162,9 +172,9 @@ export const exportToExcel = (data: AppData) => {
           'Adoption Status': asset.dtsAdoptionStatus
             ? DTS_ADOPTION_STATUS_LABEL[asset.dtsAdoptionStatus] ?? asset.dtsAdoptionStatus
             : '',
-          'Initiative Count': assetInits.length,
-          'Total CapEx ($)': totalCapex,
-          'Total OpEx ($)': totalOpex,
+          'Initiative Count': summary.count,
+          'Total CapEx ($)': summary.totalCapex,
+          'Total OpEx ($)': summary.totalOpex,
         };
       });
 
