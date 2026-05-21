@@ -373,7 +373,7 @@ export function EditableTable<T extends { [key: string]: any }>({
               col?.type === 'number' ? (parseFloat(raw) || 0) :
               col?.type === 'boolean' ? (raw.toLowerCase() === 'true' || raw === '1') :
               col?.type === 'select'
-                ? (col.options?.some(option => option.value === raw) ? raw : (col.options?.[0]?.value ?? ''))
+                ? (col.options?.some(option => option.value === raw) ? raw : '')
                 : raw;
             rowData[key] = value as T[keyof T];
           }
