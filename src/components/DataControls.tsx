@@ -182,7 +182,7 @@ export function DataControls({ data, onImport, onError, timelineId }: DataContro
       imported.forEach(importItem => {
         const index = merged.findIndex(e => e.id === importItem.id);
         if (index >= 0) {
-          merged[index] = importItem;
+          merged[index] = { ...merged[index], ...importItem };
         } else {
           merged.push(importItem);
         }
