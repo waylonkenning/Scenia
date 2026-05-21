@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { Asset, Application, ApplicationSegment, ApplicationStatus, DtsPhaseRecord, Initiative, Milestone, Programme, Strategy, Dependency, AssetCategory, TimelineSettings, Resource } from '../types';
-import { differenceInDays, format, parseISO, addQuarters, getYear, getQuarter, addDays, startOfMonth, lastDayOfMonth, addMonths, addWeeks } from 'date-fns';
+import { differenceInDays, format, parseISO, isValid, addQuarters, getYear, getQuarter, addDays, startOfMonth, lastDayOfMonth, addMonths, addWeeks } from 'date-fns';
 import { cn, reorder } from '../lib/utils';
 import { AlertTriangle, Star, Info, ChevronRight, ChevronDown, ChevronUp, Boxes, Trash2 } from 'lucide-react';
 import { geanzAreas, GEANZ_CATEGORY_ID, GEANZ_TO_DTS_MAP, GeanzArea } from '../lib/geanzCatalogue';
@@ -57,6 +57,7 @@ interface TimelineProps {
 
 const SIDEBAR_WIDTH_DESKTOP = 256; // 16rem
 const SIDEBAR_WIDTH_MOBILE = 120; // 7.5rem
+const MAX_RENDERED_DEPENDENCIES = 2000;
 
 
 export function Timeline({ assets, applications = [], initiatives, milestones, programmes, strategies, dependencies, assetCategories, resources = [], settings, onAddInitiative, onUpdateInitiative, onUpdateAssets, onUpdateDependencies, onUpdateMilestone, onDeleteInitiative, onUpdateSettings, searchQuery, applicationSegments: applicationSegmentsProp = [], onSaveApplicationSegment, onDeleteApplicationSegment, onUpdateApplicationSegments, applicationStatuses = [], dtsPhases = [], onDeleteAsset, onBulkDeleteAssets, onAddAssets }: TimelineProps) {
@@ -186,8 +187,6 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [creatingSegmentParams, setCreatingSegmentParams] = useState<{ id: string; assetId: string; startDate: string; endDate: string; row: number } | null>(null);
   const [segmentPanelId, setSegmentPanelId] = useState<string | null>(null); // separate from selectedSegmentId — panel only opens when this is set
-  const segIdCounter = useRef(0);
-  const initIdCounter = useRef(0);
   const [drawingDependency, setDrawingDependency] = useState<{
     sourceId: string;
     sourceType: 'initiative' | 'milestone' | 'segment';
@@ -253,21 +252,38 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
     return computeCriticalPath(initiatives, dependencies);
   }, [initiatives, dependencies, settings.criticalPath]);
 
+  const renderedDependencies = useMemo(() => {
+    const uniqueDeps: Dependency[] = [];
+    const seen = new Set<string>();
+
+    for (const dep of dependencies) {
+      const key = `${dep.sourceType || 'initiative'}:${dep.sourceId}->${dep.targetType || 'initiative'}:${dep.targetId}:${dep.type || ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      uniqueDeps.push(dep);
+      if (uniqueDeps.length >= MAX_RENDERED_DEPENDENCIES) break;
+    }
+
+    return uniqueDeps;
+  }, [dependencies]);
+
+  const toSearchString = (value: unknown) => String(value ?? '').toLowerCase();
+
   const filteredInitiatives = useMemo(() => {
     if (!searchQuery) return initiatives;
     const query = searchQuery.toLowerCase();
     return initiatives.filter(init => {
-      const matchName = init.name.toLowerCase().includes(query);
-      const matchDesc = init.description?.toLowerCase().includes(query);
+      const matchName = toSearchString(init.name).includes(query);
+      const matchDesc = toSearchString(init.description).includes(query);
 
       const asset = assets.find(a => a.id === init.assetId);
-      const matchAsset = asset?.name.toLowerCase().includes(query);
+      const matchAsset = toSearchString(asset?.name).includes(query);
 
       const programme = programmes.find(p => p.id === init.programmeId);
-      const matchProg = programme?.name.toLowerCase().includes(query);
+      const matchProg = toSearchString(programme?.name).includes(query);
 
       const strategy = strategies.find(s => s.id === init.strategyId);
-      const matchStrat = strategy?.name.toLowerCase().includes(query);
+      const matchStrat = toSearchString(strategy?.name).includes(query);
 
       return matchName || matchDesc || matchAsset || matchProg || matchStrat;
     });
@@ -385,7 +401,12 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
 
     // minTimelineEnd ensures we AT LEAST render the requested duration (3/6/12/24/36 months)
     const minTimelineEnd = addMonths(timelineStart, ms);
-    const timelineEnd = maxEndDate > minTimelineEnd ? maxEndDate : minTimelineEnd;
+    const uncappedTimelineEnd = maxEndDate > minTimelineEnd ? maxEndDate : minTimelineEnd;
+
+    // Cap timeline horizon to prevent rendering unbounded columns from malformed or malicious dates
+    const MAX_TIMELINE_MONTHS = 120;
+    const maxTimelineEnd = addMonths(timelineStart, MAX_TIMELINE_MONTHS);
+    const timelineEnd = uncappedTimelineEnd > maxTimelineEnd ? maxTimelineEnd : uncappedTimelineEnd;
 
     if (ms === 3) {
       // Weekly columns — snap to the Monday of the week containing timelineStart
@@ -480,17 +501,8 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
     const calculatedStartDate = format(addDays(startDate, daysFromStart), 'yyyy-MM-dd');
     const calculatedEndDate = format(addDays(startDate, daysFromStart + 90), 'yyyy-MM-dd'); // 90 days default duration
 
-    // Generate unique ID by checking existing initiatives
-    const existingInitiativeIds = new Set(initiatives.map(init => init.id));
-    let newId = `init-new-${initIdCounter.current}`;
-    while (existingInitiativeIds.has(newId)) {
-      initIdCounter.current++;
-      newId = `init-new-${initIdCounter.current}`;
-    }
-    initIdCounter.current++;
-
     setCreatingInitiativeParams({
-      id: newId,
+      id: crypto.randomUUID(),
       assetId,
       startDate: calculatedStartDate,
       endDate: calculatedEndDate
@@ -1012,8 +1024,9 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
         const subtitle = isGroup ? (groupProgrammeNames || groupStrategyNames) : (init.programmeId || init.strategyId);
         const baseHeight = subtitle ? 48 : 32;
         const charsPerLine = Math.max(20, Math.floor(width * 4));
-        const lines = Math.ceil(init.description.length / charsPerLine);
-        const clampedLines = isGroup ? lines : Math.min(3, lines);
+        const descriptionLength = Math.min(init.description.length, 600);
+        const lines = Math.ceil(descriptionLength / charsPerLine);
+        const clampedLines = Math.min(6, lines);
         descHeight = Math.max(BAR_HEIGHT, baseHeight + clampedLines * 12 + 9);
       }
 
@@ -1437,7 +1450,7 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
                   });
                 }
 
-                return dependencies.map(dep => {
+                return renderedDependencies.map(dep => {
                 const isMilestoneSource = dep.sourceType === 'milestone';
                 const source = getEntityPos(dep.sourceId, dep.sourceType);
                 const target = getEntityPos(dep.targetId, dep.targetType);
@@ -2155,7 +2168,7 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
                                 const newStart = format(addDays(startDate, daysFromStart), 'yyyy-MM-dd');
                                 const newEnd = format(addDays(startDate, daysFromStart + 90), 'yyyy-MM-dd');
                                 const autoRow = computeAutoRow(newStart, newEnd, assetSegments);
-                                setCreatingSegmentParams({ id: `seg-new-${segIdCounter.current++}`, assetId: asset.id, startDate: newStart, endDate: newEnd, row: autoRow });
+                                setCreatingSegmentParams({ id: crypto.randomUUID(), assetId: asset.id, startDate: newStart, endDate: newEnd, row: autoRow });
                                 setSelectedSegmentId(null);
                               }}
                             >
@@ -2278,6 +2291,8 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
                         {/* Milestone markers — lifted to span both swimlanes */}
                         {assetMilestones.map(mile => {
                           const currentMile = localMilestones.find(m => m.id === mile.id) || mile;
+                          const parsedMileDate = parseISO(currentMile.date);
+                          if (!isValid(parsedMileDate)) return null;
                           const pos = getPosition(currentMile.date);
                           if (pos < 0 || pos > 100) return null;
                           return (
@@ -2314,7 +2329,7 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
                                       )}
                                     >
                                       <div className="text-[10px] font-bold text-slate-800 leading-none">{mile.name}</div>
-                                      <div className="text-[8px] text-slate-500 mt-0.5">{format(parseISO(currentMile.date), 'MMM yyyy')}</div>
+                                      <div className="text-[8px] text-slate-500 mt-0.5">{format(parsedMileDate, 'MMM yyyy')}</div>
                                     </div>
                                   );
                                 })()}
@@ -2622,6 +2637,7 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
 
       <ApplicationSegmentPanel
         isOpen={segmentPanelId !== null || creatingSegmentParams !== null}
+        isNew={creatingSegmentParams !== null}
         segment={
           segmentPanelId
             ? localSegments.find(s => s.id === segmentPanelId) || null
