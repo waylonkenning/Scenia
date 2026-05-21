@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { Asset, Application, ApplicationSegment, ApplicationStatus, DtsPhaseRecord, Initiative, Milestone, Programme, Strategy, Dependency, AssetCategory, TimelineSettings, Resource } from '../types';
-import { differenceInDays, format, parseISO, addQuarters, getYear, getQuarter, addDays, startOfMonth, lastDayOfMonth, addMonths, addWeeks } from 'date-fns';
+import { differenceInDays, format, parseISO, isValid, addQuarters, getYear, getQuarter, addDays, startOfMonth, lastDayOfMonth, addMonths, addWeeks } from 'date-fns';
 import { cn, reorder } from '../lib/utils';
 import { AlertTriangle, Star, Info, ChevronRight, ChevronDown, ChevronUp, Boxes, Trash2 } from 'lucide-react';
 import { geanzAreas, GEANZ_CATEGORY_ID, GEANZ_TO_DTS_MAP, GeanzArea } from '../lib/geanzCatalogue';
@@ -2278,6 +2278,8 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
                         {/* Milestone markers — lifted to span both swimlanes */}
                         {assetMilestones.map(mile => {
                           const currentMile = localMilestones.find(m => m.id === mile.id) || mile;
+                          const parsedMileDate = parseISO(currentMile.date);
+                          if (!isValid(parsedMileDate)) return null;
                           const pos = getPosition(currentMile.date);
                           if (pos < 0 || pos > 100) return null;
                           return (
@@ -2314,7 +2316,7 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
                                       )}
                                     >
                                       <div className="text-[10px] font-bold text-slate-800 leading-none">{mile.name}</div>
-                                      <div className="text-[8px] text-slate-500 mt-0.5">{format(parseISO(currentMile.date), 'MMM yyyy')}</div>
+                                      <div className="text-[8px] text-slate-500 mt-0.5">{format(parsedMileDate, 'MMM yyyy')}</div>
                                     </div>
                                   );
                                 })()}
