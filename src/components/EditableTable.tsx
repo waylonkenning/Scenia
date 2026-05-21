@@ -179,11 +179,11 @@ export function EditableTable<T extends { [key: string]: any }>({
   }, [rows, pendingFocus]);
 
   const sortedRows = useMemo(() => {
-    let filteredData = rows;
+    let indexedRows = rows.map((row, originalIndex) => ({ row, originalIndex }));
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      filteredData = rows.filter(row => {
+      indexedRows = indexedRows.filter(({ row }) => {
         return columns.some(col => {
           const val = row[col.key];
           if (val === null || val === undefined) return false;
@@ -197,11 +197,11 @@ export function EditableTable<T extends { [key: string]: any }>({
       });
     }
 
-    if (!sortConfig) return filteredData;
+    if (!sortConfig) return indexedRows;
 
-    return [...filteredData].sort((a, b) => {
-      const aValue = a[sortConfig.key];
-      const bValue = b[sortConfig.key];
+    return [...indexedRows].sort((a, b) => {
+      const aValue = a.row[sortConfig.key];
+      const bValue = b.row[sortConfig.key];
 
       if (aValue === bValue) return 0;
       if (aValue === null || aValue === undefined) return 1;
@@ -454,16 +454,15 @@ export function EditableTable<T extends { [key: string]: any }>({
             </tr>
           </thead>
           <tbody>
-            {sortedRows.map((row) => {
-              const rowIndex = rows.findIndex(r => r[idField] === row[idField]);
+            {sortedRows.map(({ row, originalIndex }) => {
               return (
-                <tr key={String(row[idField])} data-real="true" data-id={String(row[idField])} className="hover:bg-slate-50 group">
+                <tr key={`${String(row[idField])}-${originalIndex}`} data-real="true" data-id={String(row[idField])} className="hover:bg-slate-50 group">
                   {columns.map((col) => (
-                    <td key={`${String(row[idField])}-${String(col.key)}`} data-key={String(col.key)} data-testid={col.cellTestId} className="border-b border-r border-slate-100 last:border-r-0 p-0 relative">
+                    <td key={`${String(row[idField])}-${originalIndex}-${String(col.key)}`} data-key={String(col.key)} data-testid={col.cellTestId} className="border-b border-r border-slate-100 last:border-r-0 p-0 relative">
                       {col.type === 'select' ? (
                         <select
                           value={String(row[col.key] || '')}
-                          onChange={(e) => handleChange(rowIndex, col.key, e.target.value, false)}
+                          onChange={(e) => handleChange(originalIndex, col.key, e.target.value, false)}
                           aria-label={col.label}
                           className="w-full h-full px-3 py-2 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 outline-none appearance-none"
                         >
@@ -495,7 +494,7 @@ export function EditableTable<T extends { [key: string]: any }>({
                                     <button
                                       key={colorOption.value}
                                       onClick={() => {
-                                        handleChange(rowIndex, col.key, colorOption.value, false);
+                                        handleChange(originalIndex, col.key, colorOption.value, false);
                                         setActiveColorPicker(null);
                                       }}
                                       title={colorOption.name}
@@ -519,7 +518,7 @@ export function EditableTable<T extends { [key: string]: any }>({
                           <input
                             type="checkbox"
                             checked={!!row[col.key]}
-                            onChange={(e) => handleCheckboxChange(rowIndex, col.key, e.target.checked, false)}
+                            onChange={(e) => handleCheckboxChange(originalIndex, col.key, e.target.checked, false)}
                             aria-label={col.label}
                             className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
                           />
@@ -528,7 +527,7 @@ export function EditableTable<T extends { [key: string]: any }>({
                         <textarea
                           rows={2}
                           value={String(row[col.key] || '')}
-                          onChange={(e) => handleChange(rowIndex, col.key, e.target.value, false)}
+                          onChange={(e) => handleChange(originalIndex, col.key, e.target.value, false)}
                           placeholder={col.placeholder}
                           aria-label={col.label}
                           className="w-full px-3 py-2 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 outline-none resize-none text-sm"
@@ -538,7 +537,7 @@ export function EditableTable<T extends { [key: string]: any }>({
                         <input
                           type={col.type}
                           value={col.type === 'number' ? (row[col.key] == null ? '' : Number(row[col.key])) : String(row[col.key] || '')}
-                          onChange={(e) => handleChange(rowIndex, col.key, col.type === 'number' ? Number(e.target.value) : e.target.value, false)}
+                          onChange={(e) => handleChange(originalIndex, col.key, col.type === 'number' ? Number(e.target.value) : e.target.value, false)}
                           placeholder={col.placeholder}
                           aria-label={col.label}
                           className="w-full h-full px-3 py-2 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-blue-500 outline-none"
@@ -549,7 +548,7 @@ export function EditableTable<T extends { [key: string]: any }>({
                   ))}
                   <td className="border-b border-slate-100 p-1 text-center">
                     <button
-                      onClick={() => handleDelete(rowIndex)}
+                      onClick={() => handleDelete(originalIndex)}
                       data-testid={`delete-row-btn-${tableId}`}
                       className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors opacity-0 group-hover:opacity-100"
                       title="Delete row"
