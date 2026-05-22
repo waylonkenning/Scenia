@@ -173,40 +173,34 @@ export function layoutSegments(
 
   const allItems: PlacedItem[] = [];
 
-  const explicitSegs = segments.filter(s => s.row !== undefined);
-  const autoSegs = [...segments.filter(s => s.row === undefined)].sort((a, b) =>
-    a.startDate.localeCompare(b.startDate),
-  );
-
-  explicitSegs.forEach(seg => {
-    allItems.push({
-      seg,
-      row: seg.row!,
-      rowSpan: seg.rowSpan ?? 1,
-      left: getPosition(seg.startDate, startDate, totalDays),
-      right:
-        getPosition(seg.startDate, startDate, totalDays) +
-        getWidth(seg.startDate, seg.endDate, totalDays),
-    });
-  });
-
-  autoSegs.forEach(seg => {
+  const placeSegment = (seg: ApplicationSegment, preferredRow: number) => {
     const left = getPosition(seg.startDate, startDate, totalDays);
     const right = left + getWidth(seg.startDate, seg.endDate, totalDays);
     const span = seg.rowSpan ?? 1;
 
-    let bestRow = 0;
+    let row = preferredRow;
     while (true) {
       const conflicts = allItems.filter(item => {
-        const rowOverlap = item.row < bestRow + span && item.row + item.rowSpan > bestRow;
+        const rowOverlap = item.row < row + span && item.row + item.rowSpan > row;
         if (!rowOverlap) return false;
         return !(item.right <= left || item.left >= right);
       });
       if (conflicts.length === 0) break;
-      bestRow++;
+      row++;
     }
-    allItems.push({ seg, row: bestRow, rowSpan: span, left, right });
-  });
+
+    allItems.push({ seg, row, rowSpan: span, left, right });
+  };
+
+  const explicitSegs = [...segments.filter(s => s.row !== undefined)].sort((a, b) =>
+    (a.row! - b.row!) || a.startDate.localeCompare(b.startDate),
+  );
+  const autoSegs = [...segments.filter(s => s.row === undefined)].sort((a, b) =>
+    a.startDate.localeCompare(b.startDate),
+  );
+
+  explicitSegs.forEach(seg => placeSegment(seg, seg.row!));
+  autoSegs.forEach(seg => placeSegment(seg, 0));
 
   const maxRowEnd = allItems.reduce((max, item) => Math.max(max, item.row + item.rowSpan), 0);
   const swimlaneHeight =
