@@ -136,6 +136,8 @@ The refactor below consolidates all groupBy modes into a single rendering path.
 - [x] Scenia review bug: import validation accepts structurally broken initiatives as warnings instead of errors
 
 ### Remaining Scenia review bugs
+- [x] Empty-workspace detection is too narrow and can show the first-run picker incorrectly
+- [x] Import validation accepts structurally broken initiatives as warnings instead of errors
 - [x] Version diffing misses major categories of workspace changes
 - [ ] Explicit timeline rows can still collide in layout
 - [ ] Auto-row placement gives up after row 20
