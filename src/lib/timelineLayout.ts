@@ -208,15 +208,21 @@ export function layoutSegments(
       ? SEG_ROW_HEIGHT
       : Math.max(SEG_ROW_HEIGHT, ROW_PADDING + maxRowEnd * SEG_ROW_UNIT - BAR_GAP + ROW_PADDING);
 
-  const finalItems: LayoutSegmentItem[] = allItems.map(({ seg, row, rowSpan, left }) => ({
-    seg,
-    row,
-    rowSpan,
-    top: ROW_PADDING + row * SEG_ROW_UNIT,
-    height: rowSpan * SEG_BAR_HEIGHT + (rowSpan - 1) * BAR_GAP,
-    left,
-    width: getWidth(seg.startDate, seg.endDate, totalDays),
-  }));
+  const placedById = new Map(
+    allItems.map(({ seg, row, rowSpan, left }) => [seg.id, {
+      seg,
+      row,
+      rowSpan,
+      top: ROW_PADDING + row * SEG_ROW_UNIT,
+      height: rowSpan * SEG_BAR_HEIGHT + (rowSpan - 1) * BAR_GAP,
+      left,
+      width: getWidth(seg.startDate, seg.endDate, totalDays),
+    }] as const),
+  );
+
+  const finalItems: LayoutSegmentItem[] = segments
+    .map(seg => placedById.get(seg.id))
+    .filter((item): item is LayoutSegmentItem => Boolean(item));
 
   return { items: finalItems, height: swimlaneHeight };
 }
