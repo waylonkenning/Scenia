@@ -1,5 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Asset, Application, ApplicationSegment, ApplicationStatus, DtsPhaseRecord, Initiative, Milestone, Programme, Strategy, Dependency, AssetCategory, TimelineSettings, Version, Resource } from '../types';
+import { createSerialAsyncRunner } from './serialAsync';
 
 interface ITMapDB extends DBSchema {
   assets: {
@@ -217,7 +218,7 @@ export const getAppData = async () => {
   };
 };
 
-export const saveAppData = async (data: {
+const saveAppDataImpl = async (data: {
   assets: Asset[];
   applications: Application[];
   applicationSegments: ApplicationSegment[];
@@ -328,6 +329,8 @@ export const saveAppData = async (data: {
     throw error;
   }
 };
+
+export const saveAppData = createSerialAsyncRunner(saveAppDataImpl);
 
 // Versions helper functions
 export const saveVersion = async (version: Version) => {
