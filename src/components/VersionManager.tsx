@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Version, Asset, Application, ApplicationSegment, Initiative, Milestone, Programme, Strategy, Dependency, AssetCategory, TimelineSettings, Resource, ApplicationStatus, DtsPhaseRecord } from '../types';
-import { X, Save, History, Trash2, ArrowRight, FileText, AlertCircle, LayoutGrid, Check } from 'lucide-react';
+import { X, Save, History, Trash2, ArrowRight, FileText, AlertCircle, LayoutGrid, Check, Users, GitBranch } from 'lucide-react';
 import { saveVersion, deleteVersion } from '../lib/db';
 import { ConfirmModal } from './ConfirmModal';
 import { computeDiff } from '../lib/diff';
@@ -434,23 +434,41 @@ function VersionComparisonReport({ baseVersion, comparisonData, onClose }: {
             </div>
           ) : (
             <>
-              <DiffSection 
-                title="Initiatives" 
-                data={diff.initiatives} 
-                icon={LayoutGrid} 
-                colorClass="indigo" 
+              <DiffSection
+                title="Assets"
+                data={diff.assets}
+                icon={LayoutGrid}
+                colorClass="slate"
               />
-              <DiffSection 
-                title="Relationships" 
-                data={diff.dependencies} 
-                icon={History} 
-                colorClass="blue" 
+              <DiffSection
+                title="Programmes"
+                data={diff.programmes}
+                icon={Users}
+                colorClass="emerald"
               />
-              <DiffSection 
-                title="Milestones" 
-                data={diff.milestones} 
-                icon={FileText} 
-                colorClass="rose" 
+              <DiffSection
+                title="Strategies"
+                data={diff.strategies}
+                icon={GitBranch}
+                colorClass="violet"
+              />
+              <DiffSection
+                title="Initiatives"
+                data={diff.initiatives}
+                icon={LayoutGrid}
+                colorClass="indigo"
+              />
+              <DiffSection
+                title="Relationships"
+                data={diff.dependencies}
+                icon={History}
+                colorClass="blue"
+              />
+              <DiffSection
+                title="Milestones"
+                data={diff.milestones}
+                icon={FileText}
+                colorClass="rose"
               />
             </>
           )}

@@ -256,6 +256,105 @@ export function ReportsView({ assets, initiatives, milestones, dependencies, cur
                         <p className="text-sm text-slate-500 text-center py-4">No changes detected — this version matches the current state.</p>
                       ) : (
                         <>
+                          {(diffResult.assets.added.length > 0 || diffResult.assets.removed.length > 0 || diffResult.assets.modified.length > 0) && (
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assets</h4>
+                              <div className="space-y-2">
+                                {diffResult.assets.added.map((name, i) => (
+                                  <div key={`asset-add-${i}`} className="flex gap-2 items-start text-sm p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                                    <span className="text-[10px] font-bold bg-emerald-500 text-white px-1.5 py-0.5 rounded uppercase">Added</span>
+                                    <span className="text-emerald-900">{name}</span>
+                                  </div>
+                                ))}
+                                {diffResult.assets.removed.map((name, i) => (
+                                  <div key={`asset-rem-${i}`} className="flex gap-2 items-start text-sm p-2 bg-red-50 rounded-lg border border-red-100">
+                                    <span className="text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded uppercase">Removed</span>
+                                    <span className="text-red-900 line-through">{name}</span>
+                                  </div>
+                                ))}
+                                {diffResult.assets.modified.map((item, i) => (
+                                  <div key={`asset-mod-${i}`} className="p-2 bg-amber-50 rounded-lg border border-amber-100 text-sm">
+                                    <div className="flex gap-2 items-start mb-1">
+                                      <span className="text-[10px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded uppercase">Changed</span>
+                                      <span className="font-medium text-amber-900">{item.name}</span>
+                                    </div>
+                                    <ul className="ml-14 space-y-0.5">
+                                      {item.changes.map((c, ci) => (
+                                        <li key={ci} className="text-xs text-amber-700">• {c}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {(diffResult.programmes.added.length > 0 || diffResult.programmes.removed.length > 0 || diffResult.programmes.modified.length > 0) && (
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Programmes</h4>
+                              <div className="space-y-2">
+                                {diffResult.programmes.added.map((name, i) => (
+                                  <div key={`programme-add-${i}`} className="flex gap-2 items-start text-sm p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                                    <span className="text-[10px] font-bold bg-emerald-500 text-white px-1.5 py-0.5 rounded uppercase">Added</span>
+                                    <span className="text-emerald-900">{name}</span>
+                                  </div>
+                                ))}
+                                {diffResult.programmes.removed.map((name, i) => (
+                                  <div key={`programme-rem-${i}`} className="flex gap-2 items-start text-sm p-2 bg-red-50 rounded-lg border border-red-100">
+                                    <span className="text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded uppercase">Removed</span>
+                                    <span className="text-red-900 line-through">{name}</span>
+                                  </div>
+                                ))}
+                                {diffResult.programmes.modified.map((item, i) => (
+                                  <div key={`programme-mod-${i}`} className="p-2 bg-amber-50 rounded-lg border border-amber-100 text-sm">
+                                    <div className="flex gap-2 items-start mb-1">
+                                      <span className="text-[10px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded uppercase">Changed</span>
+                                      <span className="font-medium text-amber-900">{item.name}</span>
+                                    </div>
+                                    <ul className="ml-14 space-y-0.5">
+                                      {item.changes.map((c, ci) => (
+                                        <li key={ci} className="text-xs text-amber-700">• {c}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {(diffResult.strategies.added.length > 0 || diffResult.strategies.removed.length > 0 || diffResult.strategies.modified.length > 0) && (
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Strategies</h4>
+                              <div className="space-y-2">
+                                {diffResult.strategies.added.map((name, i) => (
+                                  <div key={`strategy-add-${i}`} className="flex gap-2 items-start text-sm p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                                    <span className="text-[10px] font-bold bg-emerald-500 text-white px-1.5 py-0.5 rounded uppercase">Added</span>
+                                    <span className="text-emerald-900">{name}</span>
+                                  </div>
+                                ))}
+                                {diffResult.strategies.removed.map((name, i) => (
+                                  <div key={`strategy-rem-${i}`} className="flex gap-2 items-start text-sm p-2 bg-red-50 rounded-lg border border-red-100">
+                                    <span className="text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded uppercase">Removed</span>
+                                    <span className="text-red-900 line-through">{name}</span>
+                                  </div>
+                                ))}
+                                {diffResult.strategies.modified.map((item, i) => (
+                                  <div key={`strategy-mod-${i}`} className="p-2 bg-amber-50 rounded-lg border border-amber-100 text-sm">
+                                    <div className="flex gap-2 items-start mb-1">
+                                      <span className="text-[10px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded uppercase">Changed</span>
+                                      <span className="font-medium text-amber-900">{item.name}</span>
+                                    </div>
+                                    <ul className="ml-14 space-y-0.5">
+                                      {item.changes.map((c, ci) => (
+                                        <li key={ci} className="text-xs text-amber-700">• {c}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           {(diffResult.initiatives.added.length > 0 || diffResult.initiatives.removed.length > 0 || diffResult.initiatives.modified.length > 0) && (
                             <div>
                               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Initiatives</h4>

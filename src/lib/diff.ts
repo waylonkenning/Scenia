@@ -1,6 +1,9 @@
 import { Version } from '../types';
 
 export type DiffResult = {
+  assets: EntityDiff;
+  programmes: EntityDiff;
+  strategies: EntityDiff;
   initiatives: EntityDiff;
   dependencies: EntityDiff;
   milestones: EntityDiff;
@@ -34,7 +37,56 @@ function compareEntities<T extends { id: string }>(
   return { added, removed, modified };
 }
 
+const getAssetCategoryName = (versionData: Version['data'], categoryId: string | undefined) =>
+  versionData.assetCategories.find(category => category.id === categoryId)?.name || 'Uncategorised';
+
 export function computeDiff(baseVersion: Version, currentData: Version['data']): DiffResult {
+  const assets = compareEntities(
+    baseVersion.data.assets,
+    currentData.assets,
+    (asset) => asset.name,
+    (b, c) => {
+      const changes: string[] = [];
+      if (b.name !== c.name) changes.push(`Renamed from "${b.name}" to "${c.name}"`);
+      if (b.categoryId !== c.categoryId) {
+        const oldCategory = getAssetCategoryName(baseVersion.data, b.categoryId);
+        const newCategory = getAssetCategoryName(currentData, c.categoryId);
+        changes.push(`Category: ${oldCategory} → ${newCategory}`);
+      }
+      if ((b.maturity ?? null) !== (c.maturity ?? null)) {
+        changes.push(`Maturity: ${b.maturity ?? 'Unrated'} → ${c.maturity ?? 'Unrated'}`);
+      }
+      if ((b.dtsAdoptionStatus ?? null) !== (c.dtsAdoptionStatus ?? null)) {
+        changes.push(`DTS adoption status: ${b.dtsAdoptionStatus ?? 'Unset'} → ${c.dtsAdoptionStatus ?? 'Unset'}`);
+      }
+      return changes;
+    }
+  );
+
+  const programmes = compareEntities(
+    baseVersion.data.programmes,
+    currentData.programmes,
+    (programme) => programme.name,
+    (b, c) => {
+      const changes: string[] = [];
+      if (b.name !== c.name) changes.push(`Renamed from "${b.name}" to "${c.name}"`);
+      if (b.color !== c.color) changes.push(`Color: ${b.color} → ${c.color}`);
+      return changes;
+    }
+  );
+
+  const strategies = compareEntities(
+    baseVersion.data.strategies,
+    currentData.strategies,
+    (strategy) => strategy.name,
+    (b, c) => {
+      const changes: string[] = [];
+      if (b.name !== c.name) changes.push(`Renamed from "${b.name}" to "${c.name}"`);
+      if (b.color !== c.color) changes.push(`Color: ${b.color} → ${c.color}`);
+      return changes;
+    }
+  );
+
   const initiatives = compareEntities(
     baseVersion.data.initiatives,
     currentData.initiatives,
@@ -89,9 +141,12 @@ export function computeDiff(baseVersion: Version, currentData: Version['data']):
   );
 
   const hasChanges =
+    assets.added.length > 0 || assets.removed.length > 0 || assets.modified.length > 0 ||
+    programmes.added.length > 0 || programmes.removed.length > 0 || programmes.modified.length > 0 ||
+    strategies.added.length > 0 || strategies.removed.length > 0 || strategies.modified.length > 0 ||
     initiatives.added.length > 0 || initiatives.removed.length > 0 || initiatives.modified.length > 0 ||
     dependencies.added.length > 0 || dependencies.removed.length > 0 || dependencies.modified.length > 0 ||
     milestones.added.length > 0 || milestones.removed.length > 0 || milestones.modified.length > 0;
 
-  return { initiatives, dependencies, milestones, hasChanges };
+  return { assets, programmes, strategies, initiatives, dependencies, milestones, hasChanges };
 }
