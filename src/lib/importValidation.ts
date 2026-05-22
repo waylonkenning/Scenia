@@ -14,6 +14,16 @@ const REQUIRED_FIELDS: Record<string, string[]> = {
   assetCategories: ['id', 'name'],
 };
 
+function getMissingFieldSeverity(entityType: string, field: string): SchemaIssue['severity'] {
+  if (entityType === 'initiatives') {
+    return field === 'id' || field === 'name' || field === 'programmeId' || field === 'assetId'
+      ? 'error'
+      : 'warning';
+  }
+
+  return field === 'id' || field === 'name' ? 'error' : 'warning';
+}
+
 export function validateImportSchema(data: Record<string, unknown[]>): SchemaIssue[] {
   const issues: SchemaIssue[] = [];
   for (const [entityType, fields] of Object.entries(REQUIRED_FIELDS)) {
@@ -25,7 +35,7 @@ export function validateImportSchema(data: Record<string, unknown[]>): SchemaIss
         issues.push({
           entity: entityType,
           issue: `"${field}" missing in ${missingCount} record${missingCount > 1 ? 's' : ''}`,
-          severity: field === 'id' || field === 'name' ? 'error' : 'warning',
+          severity: getMissingFieldSeverity(entityType, field),
         });
       }
     }

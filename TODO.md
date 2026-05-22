@@ -134,8 +134,8 @@ The refactor below consolidates all groupBy modes into a single rendering path.
 - [x] Scenia review bug: save race in App.tsx no longer allows stale IndexedDB writes to win during rapid edits
 
 ### Remaining Scenia review bugs
-- [ ] Empty-workspace detection is too narrow and can show the first-run picker incorrectly
-- [ ] Import validation accepts structurally broken initiatives as warnings instead of errors
+- [x] Empty-workspace detection is too narrow and can show the first-run picker incorrectly
+- [x] Import validation accepts structurally broken initiatives as warnings instead of errors
 - [ ] Version diffing misses major categories of workspace changes
 - [ ] Explicit timeline rows can still collide in layout
 - [ ] Auto-row placement gives up after row 20

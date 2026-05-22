@@ -55,6 +55,33 @@ test.describe('Excel Import Data Validation', () => {
     }
   });
 
+  test('AC1b: import with missing initiative programmeId shows error', async ({ page }) => {
+    const invalidFilePath = path.join(process.cwd(), 'e2e', 'mock-missing-programme.xlsx');
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet([{
+      id: 'init-no-programme',
+      name: 'Missing Programme',
+      assetId: 'a-ciam',
+      startDate: '2026-01-01',
+      endDate: '2026-06-30',
+      capex: 10000,
+      opex: 1000
+    }]);
+    XLSX.utils.book_append_sheet(wb, ws, 'Initiatives');
+    fs.writeFileSync(invalidFilePath, XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }));
+
+    try {
+      const fileInput = page.locator('input[type="file"]');
+      await fileInput.setInputFiles(invalidFilePath);
+
+      await expect(page.getByTestId('import-error-notification')).toBeVisible({ timeout: 5000 });
+      const errorText = await page.getByTestId('import-error-notification').textContent();
+      expect(errorText).toContain('programmeId');
+    } finally {
+      if (fs.existsSync(invalidFilePath)) fs.unlinkSync(invalidFilePath);
+    }
+  });
+
   // ── AC2 ──────────────────────────────────────────────────────────────────
   test('AC2: import with invalid date format shows error', async ({ page }) => {
     const invalidFilePath = path.join(process.cwd(), 'e2e', 'mock-invalid-date.xlsx');
