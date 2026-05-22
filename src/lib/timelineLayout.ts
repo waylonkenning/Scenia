@@ -62,34 +62,41 @@ export function resolveSegmentConflicts(
   segments: ApplicationSegment[],
 ): ApplicationSegment[] {
   const result = segments.map(s => ({ ...s }));
-  const queue: string[] = [movedId];
-  const processed = new Set<string>();
 
-  while (queue.length > 0) {
-    const currentId = queue.shift()!;
-    if (processed.has(currentId)) continue;
-    processed.add(currentId);
+  const ordered = result
+    .map((seg, index) => ({ seg, index }))
+    .sort((a, b) => {
+      if (a.seg.id === movedId) return -1;
+      if (b.seg.id === movedId) return 1;
+      const rowDiff = (a.seg.row ?? 0) - (b.seg.row ?? 0);
+      if (rowDiff !== 0) return rowDiff;
+      const startDiff = a.seg.startDate.localeCompare(b.seg.startDate);
+      if (startDiff !== 0) return startDiff;
+      return a.index - b.index;
+    })
+    .map(({ seg }) => seg);
 
-    const current = result.find(s => s.id === currentId);
-    if (!current) continue;
+  const placed: ApplicationSegment[] = [];
 
-    const currentRow = current.row ?? 0;
+  for (const current of ordered) {
     const currentRowSpan = current.rowSpan ?? 1;
-    const currentRowEnd = currentRow + currentRowSpan;
+    let row = current.row ?? 0;
 
-    const conflicts = result.filter(s => {
-      if (s.id === currentId) return false;
-      const sRow = s.row ?? 0;
-      const sRowSpan = s.rowSpan ?? 1;
-      const rowOverlap = sRow < currentRowEnd && sRow + sRowSpan > currentRow;
-      if (!rowOverlap) return false;
-      return s.startDate < current.endDate && s.endDate > current.startDate;
-    });
+    while (true) {
+      const conflicts = placed.filter(s => {
+        const sRow = s.row ?? 0;
+        const sRowSpan = s.rowSpan ?? 1;
+        const rowOverlap = sRow < row + currentRowSpan && sRow + sRowSpan > row;
+        if (!rowOverlap) return false;
+        return s.startDate < current.endDate && s.endDate > current.startDate;
+      });
 
-    for (const conflict of conflicts) {
-      conflict.row = currentRowEnd;
-      queue.push(conflict.id);
+      if (conflicts.length === 0) break;
+      row = Math.max(row, ...conflicts.map(s => (s.row ?? 0) + (s.rowSpan ?? 1)));
     }
+
+    current.row = row;
+    placed.push(current);
   }
 
   return result;
