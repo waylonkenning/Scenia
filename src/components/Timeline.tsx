@@ -1193,11 +1193,12 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
     window.addEventListener('mouseup', handleDepUp);
   };
 
-  const handleSegmentRowMove = (segId: string, delta: number) => {
+  const handleSegmentRowMove = (segId: string, delta: number, baseRow?: number) => {
     const seg = localSegments.find(s => s.id === segId);
     if (!seg) return;
-    const newRow = Math.max(0, (seg.row ?? 0) + delta);
-    if (newRow === (seg.row ?? 0)) return;
+    const currentRow = baseRow ?? seg.row ?? 0;
+    const newRow = Math.max(0, currentRow + delta);
+    if (newRow === currentRow) return;
     const updated = localSegments.map(s => s.id === segId ? { ...s, row: newRow } : s);
     const resolved = resolveSegmentConflicts(segId, updated);
     setLocalSegments(resolved);
@@ -2223,7 +2224,7 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
                                 ))}
                               </div>
 
-                              {segLayoutItems.map(({ seg, top, height, left, width, rowSpan }) => {
+                              {segLayoutItems.map(({ seg, top, height, left, width, rowSpan, row }) => {
                                 if (left + width < 0 || left > 100) return null;
                                 const colorClass = SEGMENT_COLORS[seg.status] || 'bg-slate-400';
                                 const displayLabel = applications.find(a => a.id === seg.applicationId)?.name
@@ -2237,7 +2238,7 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
                                     data-selected={isSegSelected ? 'true' : undefined}
                                     onMouseDown={(e) => {
                                       isDraggingRef.current = false;
-                                      setMovingSegment({ id: seg.id, initialX: e.clientX, initialY: e.clientY, initialRow: seg.row ?? 0, initialStart: seg.startDate, initialEnd: seg.endDate });
+                                      setMovingSegment({ id: seg.id, initialX: e.clientX, initialY: e.clientY, initialRow: row, initialStart: seg.startDate, initialEnd: seg.endDate });
                                     }}
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -2282,13 +2283,13 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
                                           data-testid="segment-row-up"
                                           className="w-4 h-4 bg-white/30 hover:bg-white/60 rounded text-white text-[9px] flex items-center justify-center leading-none"
                                           onMouseDown={(e) => e.stopPropagation()}
-                                          onClick={(e) => { e.stopPropagation(); handleSegmentRowMove(seg.id, -1); }}
+                                          onClick={(e) => { e.stopPropagation(); handleSegmentRowMove(seg.id, -1, row); }}
                                         >↑</button>
                                         <button
                                           data-testid="segment-row-down"
                                           className="w-4 h-4 bg-white/30 hover:bg-white/60 rounded text-white text-[9px] flex items-center justify-center leading-none"
                                           onMouseDown={(e) => e.stopPropagation()}
-                                          onClick={(e) => { e.stopPropagation(); handleSegmentRowMove(seg.id, +1); }}
+                                          onClick={(e) => { e.stopPropagation(); handleSegmentRowMove(seg.id, +1, row); }}
                                         >↓</button>
                                       </div>
                                     )}

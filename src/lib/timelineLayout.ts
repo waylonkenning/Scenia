@@ -242,7 +242,7 @@ export function computeAutoRow(
   const { items } = layoutSegments(existingSegments, startDate, totalDays);
   const newLeft = getPosition(newStart, startDate, totalDays);
   const newRight = newLeft + getWidth(newStart, newEnd, totalDays);
-  for (let row = 0; row <= 20; row++) {
+  for (let row = 0; ; row++) {
     const conflict = items.some(item => {
       const rowOverlap = item.row < row + 1 && item.row + item.rowSpan > row;
       if (!rowOverlap) return false;
@@ -250,5 +250,4 @@ export function computeAutoRow(
     });
     if (!conflict) return row;
   }
-  return 0;
 }

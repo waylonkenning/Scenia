@@ -95,7 +95,33 @@ test.describe('Application Segment Drag Improvements', () => {
     expect(boxAfterUp!.y).toBeLessThan(boxAtRow1!.y - 10);
   });
 
-  // ── AC3: row-control buttons don't overlap the right-edge resize zone ─────
+  test('AC2b: dragging or row-moving a relocated segment uses the visible row, not the stored row', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('[data-testid="asset-row-content"]', { timeout: 20000 });
+
+    const startInput = page.getByTestId('timeline-start-input');
+    await startInput.fill('2026-01-01');
+    await startInput.press('Enter');
+    await page.waitForTimeout(300);
+
+    const relocated = page.getByTestId('segment-bar-seg-azuread-sunset');
+    await expect(relocated).toBeVisible();
+    const before = await relocated.boundingBox();
+    expect(before).not.toBeNull();
+
+    // Select the segment and move it down one row. Before the fix, the app used
+    // the stale model row (undefined / 0) instead of the visible row, so the bar would
+    // not move.
+    await relocated.click();
+    await expect(page.getByTestId('segment-row-down')).toBeVisible();
+    await page.getByTestId('segment-row-down').click();
+
+    await expect.poll(async () => {
+      const box = await relocated.boundingBox();
+      return Math.round(box!.y);
+    }).toBeGreaterThan(Math.round(before!.y) + 30);
+  });
+
 
   test('AC3: row-control buttons do not overlap the right edge of the segment', async ({ page }) => {
     await goToEmptyYear(page);

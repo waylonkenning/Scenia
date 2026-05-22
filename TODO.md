@@ -140,7 +140,7 @@ The refactor below consolidates all groupBy modes into a single rendering path.
 - [x] Import validation accepts structurally broken initiatives as warnings instead of errors
 - [x] Version diffing misses major categories of workspace changes
 - [ ] Explicit timeline rows can still collide in layout
-- [ ] Auto-row placement gives up after row 20
+- [x] Auto-row placement gives up after row 20
 - [ ] Disambiguation popover can render off-screen on narrow viewports
 - [ ] Clipboard copy failure still shows success
 - [ ] Keyboard shortcuts modal reads navigator.userAgent at module scope
