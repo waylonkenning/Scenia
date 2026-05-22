@@ -198,7 +198,7 @@ export const getAppData = async () => {
   if (db.objectStoreNames.contains('settings')) {
     settingsFromDb = await db.get('settings', 'timelineSettings');
   }
-  const timelineSettings = settingsFromDb || { startYear: 2026, monthsToShow: 36 };
+  const timelineSettings = settingsFromDb || { startYear: 2026, monthsToShow: 36, sidebarWidth: 256 };
 
   return {
     assets,

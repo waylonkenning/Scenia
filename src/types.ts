@@ -183,6 +183,7 @@ export interface TimelineSettings {
   collapsedGroups?: string[];
   hasSeenTutorial?: boolean;
   columnZoom?: number; // Multiplier for minimum column width (0.5–3.0, default 1.0)
+  sidebarWidth?: number; // Width of the sticky asset/programme sidebar in pixels
   mobileBucketMode?: 'timeline' | 'quarter' | 'year' | 'programme' | 'strategy' | 'dts-phase';
   criticalPath?: 'on' | 'off';
   groupBy?: 'asset' | 'programme' | 'strategy' | 'dts-phase';

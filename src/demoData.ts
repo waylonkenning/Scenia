@@ -20,6 +20,7 @@ export const demoTimelineSettings: TimelineSettings = {
     conflictDetection: 'on',
     showRelationships: 'on',
     collapsedGroups: [],
+    sidebarWidth: 256,
 };
 
 export const demoAssetCategories: AssetCategory[] = [

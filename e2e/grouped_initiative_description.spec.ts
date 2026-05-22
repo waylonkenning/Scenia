@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Grouped Initiative Description', () => {
   test('should concatenate initiative names with + in collapsed groups', async ({ page }) => {
     test.setTimeout(60000);
-    await page.goto('http://localhost:3000/');
+    await page.goto('/');
     await page.waitForSelector('[data-testid="asset-row-content"]', { timeout: 20000 });
 
     // Enable description display via inline toggle

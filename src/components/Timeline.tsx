@@ -62,7 +62,11 @@ const MAX_RENDERED_DEPENDENCIES = 2000;
 
 export function Timeline({ assets, applications = [], initiatives, milestones, programmes, strategies, dependencies, assetCategories, resources = [], settings, onAddInitiative, onUpdateInitiative, onUpdateAssets, onUpdateDependencies, onUpdateMilestone, onDeleteInitiative, onUpdateSettings, searchQuery, applicationSegments: applicationSegmentsProp = [], onSaveApplicationSegment, onDeleteApplicationSegment, onUpdateApplicationSegments, applicationStatuses = [], dtsPhases = [], onDeleteAsset, onBulkDeleteAssets, onAddAssets }: TimelineProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
-  const SIDEBAR_WIDTH = isMobile ? SIDEBAR_WIDTH_MOBILE : SIDEBAR_WIDTH_DESKTOP;
+  const defaultSidebarWidth = isMobile ? SIDEBAR_WIDTH_MOBILE : (settings.sidebarWidth ?? SIDEBAR_WIDTH_DESKTOP);
+  const [sidebarWidth, setSidebarWidth] = useState(defaultSidebarWidth);
+  const sidebarWidthRef = useRef(defaultSidebarWidth);
+  const [resizingSidebar, setResizingSidebar] = useState<null | { initialX: number; initialWidth: number }>(null);
+  const SIDEBAR_WIDTH = sidebarWidth;
 
   const colorBy = settings.colorBy || 'programme';
 
@@ -357,6 +361,17 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
   const [containerWidth, setContainerWidth] = useState(1200);
 
   useEffect(() => {
+    sidebarWidthRef.current = sidebarWidth;
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    if (!resizingSidebar) {
+      setSidebarWidth(defaultSidebarWidth);
+      sidebarWidthRef.current = defaultSidebarWidth;
+    }
+  }, [defaultSidebarWidth, resizingSidebar]);
+
+  useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
     const observer = new ResizeObserver(entries => {
@@ -622,7 +637,12 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (resizing) {
+      if (resizingSidebar) {
+        const deltaX = e.clientX - resizingSidebar.initialX;
+        const nextWidth = Math.max(180, Math.min(560, resizingSidebar.initialWidth + deltaX));
+        sidebarWidthRef.current = nextWidth;
+        setSidebarWidth(nextWidth);
+      } else if (resizing) {
         const deltaX = e.clientX - resizing.initialX;
         if (Math.abs(deltaX) > 3) {
           isDraggingRef.current = true;
@@ -808,7 +828,9 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
     };
 
     const handleMouseUp = (e: MouseEvent) => {
-      if (resizing && onUpdateInitiative) {
+      if (resizingSidebar && onUpdateSettings) {
+        onUpdateSettings({ ...settings, sidebarWidth: sidebarWidthRef.current });
+      } else if (resizing && onUpdateInitiative) {
         const updated = localInitiatives.find(i => i.id === resizing.id);
         if (updated) onUpdateInitiative(updated);
       } else if (moving && onUpdateInitiative) {
@@ -892,6 +914,7 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
           }
         }
       }
+      setResizingSidebar(null);
       setResizing(null);
       setMoving(null);
       setMovingMilestone(null);
@@ -903,7 +926,7 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
       setMovingSegment(null);
     };
 
-    if (resizing || moving || movingMilestone || drawingDependency || movingDependency || resizingSegment || resizingSegmentVertical || movingSegment) {
+    if (resizingSidebar || resizing || moving || movingMilestone || drawingDependency || movingDependency || resizingSegment || resizingSegmentVertical || movingSegment) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
     }
@@ -912,7 +935,7 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [resizing, moving, movingMilestone, drawingDependency, movingDependency, resizingSegment, resizingSegmentVertical, movingSegment, localInitiatives, localMilestones, localSegments, totalWidth, totalDays, onUpdateInitiative, onUpdateDependencies, onUpdateMilestone, onSaveApplicationSegment, onUpdateApplicationSegments, dependencies, initiativePositions, milestonePositions, segmentPositions, settings.showRelationships, settings.snapToPeriod]);
+  }, [resizingSidebar, resizing, moving, movingMilestone, drawingDependency, movingDependency, resizingSegment, resizingSegmentVertical, movingSegment, localInitiatives, localMilestones, localSegments, totalWidth, totalDays, onUpdateInitiative, onUpdateDependencies, onUpdateMilestone, onSaveApplicationSegment, onUpdateApplicationSegments, dependencies, initiativePositions, milestonePositions, segmentPositions, settings, settings.showRelationships, settings.snapToPeriod]);
 
   const handleCategoryDragStart = (e: React.DragEvent, category: string) => {
     setDraggingCategory(category);
@@ -1377,8 +1400,21 @@ export function Timeline({ assets, applications = [], initiatives, milestones, p
       <div className="flex-1 overflow-auto scroll-smooth" ref={scrollContainerRef}>
         <div className="relative w-max min-w-full">
           <div className="flex sticky top-0 z-40 bg-white shadow-sm border-b border-slate-200">
-            <div className="sticky left-0 flex-shrink-0 p-4 font-bold text-slate-700 border-r border-slate-200 bg-slate-50 z-50 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.1)]" style={{ width: SIDEBAR_WIDTH }}>
+            <div data-testid="timeline-sidebar-header" className="sticky left-0 flex-shrink-0 p-4 font-bold text-slate-700 border-r border-slate-200 bg-slate-50 z-50 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.1)] relative" style={{ width: SIDEBAR_WIDTH }}>
               {groupBy === 'programme' ? 'Programme' : groupBy === 'strategy' ? 'Strategy' : groupBy === 'dts-phase' ? 'DTS Phase' : 'Asset'}
+              {!isMobile && (
+                <button
+                  type="button"
+                  data-testid="sidebar-resize-handle"
+                  aria-label="Resize asset sidebar"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setResizingSidebar({ initialX: e.clientX, initialWidth: sidebarWidthRef.current });
+                  }}
+                  className="absolute top-0 right-0 z-50 h-full w-3 cursor-col-resize bg-transparent hover:bg-blue-500/10"
+                />
+              )}
             </div>
             <div className="flex" style={{ width: totalWidth }}>
               {timeColumns.map((col, idx) => (

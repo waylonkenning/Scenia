@@ -4,7 +4,7 @@ test.describe('Initiative Grouping', () => {
   test('should group connected initiatives and allow collapsing', async ({ page }) => {
     test.setTimeout(60000);
     page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
-    await page.goto('http://localhost:3000/');
+    await page.goto('/');
     await page.waitForSelector('[data-testid="asset-row-content"]', { timeout: 20000 });
 
     // 1. Clear existing data to have a clean slate (optional but recommended for stability)

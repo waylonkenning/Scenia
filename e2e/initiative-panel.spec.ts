@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Initiative Panel', () => {
     test.beforeEach(async ({ page }) => {
         // Clear IndexedDB before each test
-        await page.goto('http://localhost:3000');
+        await page.goto('/');
         await page.evaluate(async () => {
             const dbInfo = await window.indexedDB.databases();
             for (const db of dbInfo) {
@@ -13,7 +13,7 @@ test.describe('Initiative Panel', () => {
             }
         });
         // Reload to start fresh
-        await page.goto('http://localhost:3000');
+        await page.goto('/');
     });
 
     test('can open initiative panel, edit, and save changes', async ({ page }) => {
