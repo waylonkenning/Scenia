@@ -84,9 +84,9 @@ test.describe('Arrow Selection — stagger & disambiguation', () => {
   test.beforeAll(() => {
     const wb = XLSX.utils.book_new();
     const initiatives = [
-      { id: 'arr-a', name: 'Arrow Source',     assetId: 'a-pam', startDate: '2026-01-01', endDate: '2026-01-31', budget: 0 },
-      { id: 'arr-b', name: 'Arrow Target One', assetId: 'a-pam', startDate: '2026-03-01', endDate: '2026-03-31', budget: 0 },
-      { id: 'arr-c', name: 'Arrow Target Two', assetId: 'a-pam', startDate: '2026-03-01', endDate: '2026-03-31', budget: 0 },
+      { id: 'arr-a', name: 'Arrow Source',     programmeId: 'prog-dtp', assetId: 'a-pam', startDate: '2026-01-01', endDate: '2026-01-31', capex: 0, opex: 0 },
+      { id: 'arr-b', name: 'Arrow Target One', programmeId: 'prog-dtp', assetId: 'a-pam', startDate: '2026-03-01', endDate: '2026-03-31', capex: 0, opex: 0 },
+      { id: 'arr-c', name: 'Arrow Target Two', programmeId: 'prog-dtp', assetId: 'a-pam', startDate: '2026-03-01', endDate: '2026-03-31', capex: 0, opex: 0 },
     ];
     const dependencies = [
       { id: 'dep-ab', sourceId: 'arr-a', targetId: 'arr-b', type: 'requires' },
