@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense, useRef } from 'react';
 import { Timeline } from './components/Timeline';
 import { MobileCardView } from './components/MobileCardView';
 import { useMediaQuery } from './lib/useMediaQuery';
@@ -12,8 +12,6 @@ import { ModalErrorBoundary, TestErrorThrower } from './components/ErrorBoundary
 import { TutorialModal } from './components/TutorialModal';
 import { LandingPage } from './components/LandingPage';
 import { VersionManager } from './components/VersionManager';
-
-import { useState, useEffect, useCallback, lazy, Suspense, useRef } from 'react';
 import { LayoutGrid, Table, Loader2, Search, Undo2, Redo2, HelpCircle, BookOpen, History, AlertTriangle, GitBranch, AlignLeft, DollarSign, MoreHorizontal, BarChart2, ZoomIn, ZoomOut, SlidersHorizontal, X, Keyboard, GitCommit, GitCommitHorizontal, Palette, Box, Boxes, Target, Users, Layers, AppWindow } from 'lucide-react';
 
 import {
