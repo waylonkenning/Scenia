@@ -132,10 +132,10 @@ The refactor below consolidates all groupBy modes into a single rendering path.
 - [x] Scenia review bug: timeline sidebar resize + persistence (PR #66)
 - [x] Scenia review bug: DataManager deletes cascade application records and applicationSegments
 - [x] Scenia review bug: save race in App.tsx no longer allows stale IndexedDB writes to win during rapid edits
+- [x] Scenia review bug: empty-workspace detection is too narrow and can show the first-run picker incorrectly
+- [x] Scenia review bug: import validation accepts structurally broken initiatives as warnings instead of errors
 
 ### Remaining Scenia review bugs
-- [x] Empty-workspace detection is too narrow and can show the first-run picker incorrectly
-- [x] Import validation accepts structurally broken initiatives as warnings instead of errors
 - [ ] Version diffing misses major categories of workspace changes
 - [ ] Explicit timeline rows can still collide in layout
 - [ ] Auto-row placement gives up after row 20

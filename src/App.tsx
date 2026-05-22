@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense, useRef } from 'react';
 import { Timeline } from './components/Timeline';
 import { MobileCardView } from './components/MobileCardView';
 import { useMediaQuery } from './lib/useMediaQuery';
@@ -12,11 +12,8 @@ import { ModalErrorBoundary, TestErrorThrower } from './components/ErrorBoundary
 import { TutorialModal } from './components/TutorialModal';
 import { LandingPage } from './components/LandingPage';
 import { VersionManager } from './components/VersionManager';
+import { LayoutGrid, Table, Loader2, Search, Undo2, Redo2, HelpCircle, BookOpen, History, AlertTriangle, GitBranch, AlignLeft, DollarSign, MoreHorizontal, BarChart2, ZoomIn, ZoomOut, SlidersHorizontal, X, Keyboard, GitCommit, GitCommitHorizontal, Palette, Box, Boxes, Target, Users, Layers, AppWindow } from 'lucide-react';
 
-// Lazy load modals and heavy components for code splitting
-const FeaturesModal = lazy(() => import('./components/FeaturesModal').then(m => ({ default: m.FeaturesModal })));
-const KeyboardShortcutsModal = lazy(() => import('./components/KeyboardShortcutsModal').then(m => ({ default: m.KeyboardShortcutsModal })));
-const TemplatePickerModal = lazy(() => import('./components/TemplatePickerModal').then(m => ({ default: m.TemplatePickerModal })));
 import {
   demoAssets as initialAssets,
   demoInitiatives as initialInitiatives,
@@ -31,12 +28,22 @@ import {
   demoApplicationSegments as initialApplicationSegments,
   demoApplicationStatuses as initialApplicationStatuses,
 } from './demoData';
-import { Asset, Application, ApplicationSegment, ApplicationStatus, DtsPhaseRecord, Initiative, Milestone, Programme, Strategy, Dependency, AssetCategory, TimelineSettings, Resource } from './types';
-import { LayoutGrid, Table, Loader2, Search, Undo2, Redo2, HelpCircle, BookOpen, History, AlertTriangle, GitBranch, AlignLeft, DollarSign, MoreHorizontal, BarChart2, ZoomIn, ZoomOut, SlidersHorizontal, X, Keyboard, GitCommit, GitCommitHorizontal, Palette, Box, Boxes, Target, Users, Layers, AppWindow } from 'lucide-react';
+import { Asset, Application, ApplicationSegment, ApplicationStatus, DtsPhaseRecord, Initiative, Milestone, Programme, Strategy, Dependency, AssetCategory, TimelineSettings, Resource, Version } from './types';
+import { cn } from './lib/utils';
+import { getAppData, saveAppData, getAllVersions } from './lib/db';
+import { importFromExcel } from './lib/excel';
+import { validateImportSchema } from './lib/importValidation';
+import { importSharedWorkspace } from './lib/share';
+import { getTemplateData, TemplateId } from './lib/workspaceTemplates';
+import { isWorkspaceEmpty } from './lib/workspaceState';
+
+// Lazy load modals and heavy components for code splitting
+const FeaturesModal = lazy(() => import('./components/FeaturesModal').then(m => ({ default: m.FeaturesModal })));
+const KeyboardShortcutsModal = lazy(() => import('./components/KeyboardShortcutsModal').then(m => ({ default: m.KeyboardShortcutsModal })));
+const TemplatePickerModal = lazy(() => import('./components/TemplatePickerModal').then(m => ({ default: m.TemplatePickerModal })));
 const DataManager = lazy(() => import('./components/DataManager').then(m => ({ default: m.DataManager })));
 const ReportsView = lazy(() => import('./components/ReportsView').then(m => ({ default: m.ReportsView })));
 const HelpView = lazy(() => import('./components/HelpView').then(m => ({ default: m.HelpView })));
-import { getTemplateData, TemplateId } from './lib/workspaceTemplates';
 
 type AppState = {
   assets: Asset[];
@@ -54,12 +61,6 @@ type AppState = {
   dtsPhases: DtsPhaseRecord[];
   versions?: Version[];
 };
-import { cn } from './lib/utils';
-import { getAppData, saveAppData, getAllVersions } from './lib/db';
-import { importFromExcel } from './lib/excel';
-import { validateImportSchema } from './lib/importValidation';
-import { importSharedWorkspace } from './lib/share';
-import { useRef } from 'react';
 
 function isValidSharedAppState(data: unknown): data is AppState {
   if (!data || typeof data !== 'object') return false;
@@ -218,8 +219,9 @@ export default function App() {
         const loadedVersions = await getAllVersions();
         setVersions(loadedVersions);
 
-        // If DB is empty (first run), show the template picker (or auto-load GEANZ in E2E mode)
-        if (dbData.assets.length === 0 && dbData.initiatives.length === 0) {
+        // If the workspace has no user-authored data yet, show the template picker
+        // (or auto-load GEANZ in E2E mode).
+        if (isWorkspaceEmpty(dbData)) {
           if (localStorage.getItem('scenia-e2e')) {
             // E2E mode: auto-load GEANZ template so existing tests keep working
             const defaults: AppState = {
