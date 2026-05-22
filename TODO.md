@@ -131,10 +131,10 @@ The refactor below consolidates all groupBy modes into a single rendering path.
 - [x] Scenia review bug: Playwright tests using hard-coded localhost URLs (PR #65)
 - [x] Scenia review bug: timeline sidebar resize + persistence (PR #66)
 - [x] Scenia review bug: DataManager deletes cascade application records and applicationSegments
+- [x] Scenia review bug: empty-workspace detection is too narrow and can show the first-run picker incorrectly
 
 ### Remaining Scenia review bugs
 - [ ] Save race in App.tsx can allow stale IndexedDB writes to win during rapid edits
-- [ ] Empty-workspace detection is too narrow and can show the first-run picker incorrectly
 - [ ] Import validation accepts structurally broken initiatives as warnings instead of errors
 - [ ] Version diffing misses major categories of workspace changes
 - [ ] Explicit timeline rows can still collide in layout
