@@ -21,7 +21,7 @@
     "clean": "rm -rf dist",
     "lint": "eslint . && tsc --noEmit",
     "format": "prettier --write .",
-    "test": "playwright test",
+    "test": "npx playwright install chromium && playwright test",
     "test:unit": "vitest run"
   },
   "dependencies": {
