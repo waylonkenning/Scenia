@@ -1,0 +1,321 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Scenia website and zero-knowledge sharing service on AWS.
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: scenia.website
+    Description: Apex domain delegated to the Route 53 hosted zone.
+  HostedZoneId:
+    Type: String
+    Default: ''
+    Description: Public Route 53 hosted zone ID for DomainName, without /hostedzone/.
+  CertificateArn:
+    Type: String
+    Default: ''
+    Description: ACM certificate ARN in us-east-1 for DomainName and www.DomainName.
+
+Conditions:
+  HasCertificate: !Not [!Equals [!Ref CertificateArn, '']]
+
+Resources:
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  ShareBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireSharedPayloads
+            Prefix: shares/
+            Status: Enabled
+            ExpirationInDays: 7
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  ShareTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  ShareApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowHeaders:
+          - Content-Type
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowOrigins:
+          - !Sub https://${DomainName}
+          - !Sub https://www.${DomainName}
+
+  ShareFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/aws/
+      Handler: index.handler
+      Runtime: nodejs22.x
+      MemorySize: 256
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ShareTable
+          SHARE_BUCKET: !Ref ShareBucket
+          TTL_SECONDS: '604800'
+          CORS_ORIGINS: !Sub https://${DomainName},https://www.${DomainName}
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ShareTable
+        - S3CrudPolicy:
+            BucketName: !Ref ShareBucket
+      Events:
+        ShareApiProxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ShareApi
+            Method: ANY
+            Path: /{proxy+}
+
+  CloudFrontOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Description: Access control for the private Scenia website bucket.
+        Name: !Sub ${AWS::StackName}-website
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  WebsiteCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Comment: Cache immutable Vite assets while allowing HTML refreshes.
+        DefaultTTL: 86400
+        MaxTTL: 31536000
+        MinTTL: 0
+        Name: !Sub ${AWS::StackName}-website
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  ApiCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Comment: Disable caching for the sharing API.
+        DefaultTTL: 0
+        MaxTTL: 0
+        MinTTL: 0
+        Name: !Sub ${AWS::StackName}-api
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: false
+          EnableAcceptEncodingGzip: false
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  ApiOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Comment: Forward API request data without the CloudFront host header.
+        Name: !Sub ${AWS::StackName}-api
+        CookiesConfig:
+          CookieBehavior: all
+        HeadersConfig:
+          HeaderBehavior: whitelist
+          Headers:
+            - Accept
+            - Content-Type
+            - Origin
+            - Access-Control-Request-Headers
+            - Access-Control-Request-Method
+        QueryStringsConfig:
+          QueryStringBehavior: all
+
+  SecurityHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Comment: Security headers for the Scenia SPA.
+        Name: !Sub ${AWS::StackName}-security
+        CustomHeadersConfig:
+          Items:
+            - Header: Permissions-Policy
+              Override: true
+              Value: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+        SecurityHeadersConfig:
+          ContentSecurityPolicy:
+            ContentSecurityPolicy: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'"
+            Override: true
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            FrameOption: DENY
+            Override: true
+          ReferrerPolicy:
+            ReferrerPolicy: strict-origin-when-cross-origin
+            Override: true
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: true
+            Override: true
+            Preload: true
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    DependsOn:
+      - ShareApi
+    Properties:
+      DistributionConfig:
+        Comment: Scenia production website.
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          CachePolicyId: !Ref WebsiteCachePolicy
+          Compress: true
+          ResponseHeadersPolicyId: !Ref SecurityHeadersPolicy
+          TargetOriginId: WebsiteOrigin
+          ViewerProtocolPolicy: redirect-to-https
+        CustomErrorResponses:
+          - ErrorCachingMinTTL: 0
+            ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCachingMinTTL: 0
+            ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        Enabled: true
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        Origins:
+          - DomainName: !GetAtt WebsiteBucket.RegionalDomainName
+            Id: WebsiteOrigin
+            OriginAccessControlId: !Ref CloudFrontOriginAccessControl
+            S3OriginConfig: {}
+          - CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
+            DomainName: !Sub ${ShareApi}.execute-api.${AWS::Region}.amazonaws.com
+            Id: ShareApiOrigin
+        PriceClass: PriceClass_100
+        Aliases: !If
+          - HasCertificate
+          - - !Ref DomainName
+            - !Sub www.${DomainName}
+          - !Ref AWS::NoValue
+        ViewerCertificate: !If
+          - HasCertificate
+          - AcmCertificateArn: !Ref CertificateArn
+            MinimumProtocolVersion: TLSv1.2_2021
+            SslSupportMethod: sni-only
+          - CloudFrontDefaultCertificate: true
+        CacheBehaviors:
+          - AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - PATCH
+              - POST
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+            CachePolicyId: !Ref ApiCachePolicy
+            Compress: false
+            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            PathPattern: /api*
+            TargetOriginId: ShareApiOrigin
+            ViewerProtocolPolicy: redirect-to-https
+
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebsiteBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontReadOnly
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub ${WebsiteBucket.Arn}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}
+
+Outputs:
+  WebsiteBucketName:
+    Description: Private S3 bucket receiving the Vite build.
+    Value: !Ref WebsiteBucket
+  ShareBucketName:
+    Description: Private S3 bucket receiving encrypted share payloads.
+    Value: !Ref ShareBucket
+  ShareTableName:
+    Description: DynamoDB table containing share metadata and TTLs.
+    Value: !Ref ShareTable
+  CloudFrontDistributionId:
+    Description: CloudFront distribution for the website and /api route.
+    Value: !Ref CloudFrontDistribution
+  CloudFrontDomainName:
+    Description: CloudFront distribution hostname.
+    Value: !GetAtt CloudFrontDistribution.DomainName
+  ShareApiUrl:
+    Description: Direct API Gateway endpoint for diagnostics.
+    Value: !Sub https://${ShareApi}.execute-api.${AWS::Region}.amazonaws.com
