@@ -93,6 +93,7 @@ function LoadingFallback() {
 }
 
 export default function App() {
+  const isStandalone = import.meta.env.VITE_SCENIA_STANDALONE === 'true';
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [view, setView] = useState<'visualiser' | 'data' | 'reports' | 'guide'>('visualiser');
   const [isLoading, setIsLoading] = useState(true);
@@ -102,10 +103,10 @@ export default function App() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   
   // Check for share link in URL to skip landing page
-  const hasShareId = new URLSearchParams(window.location.search).has('id');
+  const hasShareId = !isStandalone && new URLSearchParams(window.location.search).has('id');
 
   const [showLandingPage, setShowLandingPage] = useState(
-    !hasShareId && !localStorage.getItem('scenia_has_seen_landing') && !localStorage.getItem('scenia-e2e')
+    !isStandalone && !hasShareId && !localStorage.getItem('scenia_has_seen_landing') && !localStorage.getItem('scenia-e2e')
   );
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [templatePickerIsReset, setTemplatePickerIsReset] = useState(false);
@@ -165,7 +166,7 @@ export default function App() {
         const keyMatch = hash.match(/key=([^&]*)/);
         const shareKey = keyMatch ? keyMatch[1] : null;
 
-        if (shareId && shareKey) {
+        if (!isStandalone && shareId && shareKey) {
           setIsImportingShare(true);
           try {
             const importedData = await importSharedWorkspace(shareId, shareKey);
@@ -302,7 +303,7 @@ export default function App() {
     };
 
     loadData();
-  }, []);
+  }, [isStandalone]);
 
   const handleSelectTemplate = useCallback(async (templateId: TemplateId, withDemoData: boolean) => {
     const data = getTemplateData(templateId, withDemoData);
@@ -1190,6 +1191,7 @@ export default function App() {
           onImport={handleUpdate}
           onError={setDbSaveError}
           timelineId={view === 'visualiser' ? 'timeline-visualiser' : undefined}
+          allowCloudSharing={!isStandalone}
         />
 
         <div className="w-px h-6 bg-slate-200 shrink-0" />
@@ -1511,7 +1513,7 @@ export default function App() {
         </ModalErrorBoundary>
       )}
 
-      {showLandingPage && (
+      {!isStandalone && showLandingPage && (
         <ModalErrorBoundary onDismiss={() => setShowLandingPage(false)}>
           <Suspense fallback={null}>
             <LandingPage

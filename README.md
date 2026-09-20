@@ -66,6 +66,41 @@ The deployment pipeline is defined in `cloudbuild.yaml`:
     npm test
     ```
 
+## 📦 Standalone browser version
+
+### Download the ready-made file
+
+1. Open the repository's **Actions** tab on GitHub.
+2. Select **Build standalone HTML** and open the latest successful run.
+3. In the run's **Artifacts** section, click **Scenia-Standalone**.
+4. Unzip the download, then double-click `scenia-standalone.html` to open it
+   directly in your browser. No installation or web server is required.
+
+The standalone build uses an embedded classic script so it can run under the
+browser's restricted `file://` security origin. If you downloaded an earlier
+build and see an "Unsafe attempt to load URL" message, download a newly generated
+artifact from a run containing this fix.
+
+GitHub requires you to be signed in to download workflow artifacts. Artifacts are
+kept for 30 days; the workflow can be run again at any time using its **Run
+workflow** button.
+
+### Build it yourself
+
+Alternatively, build a private, server-free edition of Scenia as a single HTML
+file from a local checkout:
+
+```bash
+npm run build:standalone
+```
+
+Open `dist-standalone/scenia-standalone.html` directly from your file explorer. All
+JavaScript, styles, and help images are embedded in that file, so it can be copied
+to another computer without its surrounding folder. The standalone edition opens
+straight into the application, stores work in the browser's IndexedDB, and omits
+cloud sharing and shared-link imports. Excel import/export and PDF/PNG downloads
+remain available and run locally in the browser.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started.

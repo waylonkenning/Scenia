@@ -1,0 +1,38 @@
+name: Build standalone HTML
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build downloadable HTML
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build standalone Scenia
+        run: npm run build:standalone
+
+      - name: Upload portable HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: Scenia-Standalone
+          path: dist-standalone/scenia-standalone.html
+          if-no-files-found: error
+          retention-days: 30
