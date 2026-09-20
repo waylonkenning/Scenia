@@ -44,12 +44,16 @@ function standalonePlugin(): Plugin {
       // module script as a cross-origin load even when it is embedded in the same
       // local HTML file. Rollup's single chunk has no imports or exports, so it is
       // safe to execute as a classic script and works when opened by double-click.
+      // Vite puts its module entry in <head>, where modules are deferred. A classic
+      // inline script is not deferred, so move it to the end of <body>; otherwise
+      // React runs before #root exists and throws minified error 299.
       let html = fs.readFileSync(path.join(outputDirectory, htmlEntry.fileName), 'utf8')
-        .replace(/<script[^>]+src="[^"]+"[^>]*><\/script>/, () => `<script>${javascript}</script>`)
+        .replace(/<script[^>]+src="[^"]+"[^>]*><\/script>/, '')
         .replace('<title>Scenia — IT Portfolio Planning, Visualised.</title>', '<title>Scenia Standalone</title>');
       if (cssEntry && cssEntry.type === 'asset') {
         html = html.replace(/<link[^>]+rel="stylesheet"[^>]*>/, () => `<style>${String(cssEntry.source)}</style>`);
       }
+      html = html.replace('</body>', () => `<script>${javascript}</script>\n  </body>`);
       fs.rmSync(outputDirectory, { recursive: true, force: true });
       fs.mkdirSync(outputDirectory, { recursive: true });
       fs.writeFileSync(path.join(outputDirectory, 'scenia-standalone.html'), html);
