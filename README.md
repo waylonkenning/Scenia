@@ -76,6 +76,11 @@ The deployment pipeline is defined in `cloudbuild.yaml`:
 4. Unzip the download, then double-click `scenia-standalone.html` to open it
    directly in your browser. No installation or web server is required.
 
+The standalone build uses an embedded classic script so it can run under the
+browser's restricted `file://` security origin. If you downloaded an earlier
+build and see an "Unsafe attempt to load URL" message, download a newly generated
+artifact from a run containing this fix.
+
 GitHub requires you to be signed in to download workflow artifacts. Artifacts are
 kept for 30 days; the workflow can be run again at any time using its **Run
 workflow** button.
