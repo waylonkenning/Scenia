@@ -41,9 +41,10 @@ interface DataControlsProps {
   }) => void;
   onError?: (message: string | null) => void;
   timelineId?: string; // ID of the element to capture for PDF
+  allowCloudSharing?: boolean;
 }
 
-export function DataControls({ data, onImport, onError, timelineId }: DataControlsProps) {
+export function DataControls({ data, onImport, onError, timelineId, allowCloudSharing = true }: DataControlsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importPreviewData, setImportPreviewData] = useState<Partial<typeof data> | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -214,7 +215,7 @@ export function DataControls({ data, onImport, onError, timelineId }: DataContro
 
   return (
     <div className="flex items-center gap-1.5 relative">
-      <button
+      {allowCloudSharing && <button
         data-testid="share-button"
         onClick={handleShare}
         disabled={isSharing}
@@ -223,7 +224,7 @@ export function DataControls({ data, onImport, onError, timelineId }: DataContro
       >
         <Share size={14} className={isSharing ? 'animate-pulse' : ''} />
         {isSharing ? 'Sharing...' : 'Share'}
-      </button>
+      </button>}
 
       <button
         onClick={handleExportPDF}

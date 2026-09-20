@@ -1,7 +1,56 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'node:fs';
 import { defineConfig } from 'vite';
+import type { Plugin } from 'vite';
+
+const standalone = process.env.VITE_SCENIA_STANDALONE === 'true';
+
+function standalonePlugin(): Plugin {
+  const publicRoot = path.resolve(__dirname, 'public');
+
+  const publicImages = fs.readdirSync(publicRoot, { recursive: true, withFileTypes: true })
+    .filter(entry => entry.isFile())
+    .map(entry => {
+      const filename = path.join(entry.parentPath, entry.name);
+      const relative = `/${path.relative(publicRoot, filename).split(path.sep).join('/')}`;
+      const extension = path.extname(filename).slice(1);
+      const mime = extension === 'svg' ? 'image/svg+xml' : `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+      return [relative, `data:${mime};base64,${fs.readFileSync(filename).toString('base64')}`] as const;
+    });
+
+  return {
+    name: 'scenia-standalone',
+    apply: 'build',
+    writeBundle(options, bundle) {
+      const outputDirectory = options.dir;
+      const htmlEntry = Object.values(bundle).find(item => item.type === 'asset' && item.fileName.endsWith('.html'));
+      const jsEntry = Object.values(bundle).find(item => item.type === 'chunk' && item.isEntry);
+      const cssEntry = Object.values(bundle).find(item => item.type === 'asset' && item.fileName.endsWith('.css'));
+      if (!outputDirectory || !htmlEntry || htmlEntry.type !== 'asset' || !jsEntry || jsEntry.type !== 'chunk') {
+        this.error('Standalone build could not locate its HTML or JavaScript entry.');
+        return;
+      }
+
+      let javascript = jsEntry.code;
+      for (const [url, dataUri] of publicImages) {
+        javascript = javascript.split(url).join(dataUri);
+      }
+      javascript = javascript.replaceAll('</script', '<\\/script');
+
+      let html = fs.readFileSync(path.join(outputDirectory, htmlEntry.fileName), 'utf8')
+        .replace(/<script[^>]+src="[^"]+"[^>]*><\/script>/, () => `<script type="module">${javascript}</script>`)
+        .replace('<title>Scenia — IT Portfolio Planning, Visualised.</title>', '<title>Scenia Standalone</title>');
+      if (cssEntry && cssEntry.type === 'asset') {
+        html = html.replace(/<link[^>]+rel="stylesheet"[^>]*>/, () => `<style>${String(cssEntry.source)}</style>`);
+      }
+      fs.rmSync(outputDirectory, { recursive: true, force: true });
+      fs.mkdirSync(outputDirectory, { recursive: true });
+      fs.writeFileSync(path.join(outputDirectory, 'scenia-standalone.html'), html);
+    },
+  };
+}
 
 const securityHeaders = {
   // Dev server CSP includes 'unsafe-inline' in script-src to allow Vite's React Refresh HMR preamble.
@@ -14,7 +63,8 @@ const securityHeaders = {
 };
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), ...(standalone ? [standalonePlugin()] : [])],
+  publicDir: standalone ? false : 'public',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
@@ -24,9 +74,11 @@ export default defineConfig({
     headers: securityHeaders,
   },
   build: {
+    assetsInlineLimit: standalone ? Number.MAX_SAFE_INTEGER : undefined,
     rollupOptions: {
       output: {
-        manualChunks: {
+        inlineDynamicImports: standalone,
+        manualChunks: standalone ? undefined : {
           'vendor-react': ['react', 'react-dom'],
           'vendor-date': ['date-fns'],
           'vendor-xlsx': ['xlsx'],
